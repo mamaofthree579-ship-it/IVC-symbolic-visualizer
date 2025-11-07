@@ -1,4 +1,3 @@
-
 import streamlit as st
 from src.vector_data import sample_water_symbol
 from src.vector_plot import draw_vector_field
