@@ -1,9 +1,3 @@
-
-# Neutralized sample data inspired by Ojibwe water-symbol geometry.
-# This file provides simple vector field data and a small metadata dictionary
-# for use in the visualizer. It deliberately avoids sacred or restricted content,
-# providing scientific-style sample geometry suitable for research and visualization.
-
 import numpy as np
 
 def sample_water_symbol(mode='default'):
