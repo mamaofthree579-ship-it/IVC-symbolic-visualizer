@@ -53,6 +53,15 @@ try:
 except Exception as e:
     st.error(f"Visualization failed: {e}")
 
+from modules.analytics import compute_symbol_energy
+from src.vector_plot import render_3d_energy_field
+
+# ---Compute and visualize energy-frequency field ---
+energy_df = compute_symbol_energy(data)
+st.subheader("⚡ Symbolic Energy–Frequency Field")
+fig_energy = render_3d_energy_field(data, energy_df)
+st.plotly_chart(fig_energy, use_container_width=True)
+
 # --- Footer ---
 st.markdown("---")
 st.markdown(
