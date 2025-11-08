@@ -12,7 +12,7 @@ def generate_sample_data(n=5):
 def compute_resonance_matrix(df):
     """
     Compute a resonance matrix showing symbolic interaction strength.
-    For now, uses cosine similarity between rows as a proxy for resonance.
+    Uses cosine similarity between rows as a proxy for resonance.
     """
     data = df.to_numpy()
     norm = np.linalg.norm(data, axis=1, keepdims=True)
@@ -38,7 +38,6 @@ def find_resonant_clusters(matrix, threshold=0.8):
                 cluster.add(j)
         visited |= cluster
         clusters.append({matrix.index[k] for k in cluster})
-
     return clusters
 
 def compute_energy_flow(df):
