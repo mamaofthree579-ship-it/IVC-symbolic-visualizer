@@ -10,4 +10,4 @@ requests
 pyyaml
 pathlib
 sys
-pip
+pip -> 25.3
