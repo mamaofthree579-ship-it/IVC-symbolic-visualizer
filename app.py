@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-
+import compute_symbol_energy
 from modules.analytics import generate_sample_data, compute_resonance_matrix, find_resonant_clusters
 from src.vector_plot import render_3d_resonance_field
 
