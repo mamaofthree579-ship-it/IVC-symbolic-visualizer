@@ -70,7 +70,7 @@ def compute_symbol_energy(df):
 import numpy as np
 import pandas as pd
 
-def compute_energy_flow(data):
+def compute_energy_flow(df):
     """
     Compute symbolic energy flow vectors between symbols.
     This function models 'flow' as the directional gradient of resonance strength.
