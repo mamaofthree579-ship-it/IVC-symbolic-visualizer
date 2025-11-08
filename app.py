@@ -45,12 +45,13 @@ st.subheader("Resonant Clusters")
 for i, cluster in enumerate(clusters, start=1):
     st.write(f"**Cluster {i}:** {', '.join(cluster)}")
 
-# --- 3D Resonance Visualization ---
-st.subheader("3D Resonance Field")
-st.caption("An interactive spatial representation of resonance connections between symbols.")
+st.subheader("3D Resonance Field Visualization")
 
-fig = render_3d_resonance_field(matrix, labels=matrix.columns)
-st.plotly_chart(fig, use_container_width=True)
+try:
+    fig = render_3d_resonance_field(matrix, clusters)
+    st.plotly_chart(fig, use_container_width=True)
+except Exception as e:
+    st.error(f"Visualization failed: {e}")
 
 # --- Footer ---
 st.markdown("---")
