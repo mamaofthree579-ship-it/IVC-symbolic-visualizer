@@ -21,6 +21,7 @@ from modules.analytics import (
     generate_summary_stats,
     find_resonant_paths,
     detect_frequency_anomalies
+)
 
 # --- APP CONFIGURATION ---
 st.set_page_config(
