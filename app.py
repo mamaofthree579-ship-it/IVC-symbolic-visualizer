@@ -61,7 +61,7 @@ try:
     st.dataframe(pd.DataFrame(matrix))
 except Exception as e:
     st.error(f"Error computing resonance matrix: {e}")
-    st.stop()
+    st.stop(logger.level=debug)
 
 # -----------------------------
 # CLUSTER DETECTION
