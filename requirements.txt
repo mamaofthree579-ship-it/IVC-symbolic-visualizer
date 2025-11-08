@@ -1,3 +1,16 @@
+pandas
+numpy
+streamit
+plotly.graph_objects
+matplotlib
+scikit-learn
+networkx
+python-dotenv
+requests
+pyyaml
+pathlib
+sys
+
 # Core app framework
 streamlit==1.39.0
 
