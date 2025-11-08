@@ -53,8 +53,13 @@ fig = render_3d_resonance_field(matrix, labels=matrix.columns)
 st.plotly_chart(fig, use_container_width=True)
 
 # --- Energy Mapping ---
-fig = render_3d_resonance_field(matrix, clusters)
-st.plotly_chart(fig, use_container_width=True)
+st.subheader("3D Resonance Field Visualization")
+
+try:
+    fig = render_3d_resonance_field(matrix, clusters)
+    st.plotly_chart(fig, use_container_width=True)
+except Exception as e:
+    st.error(f"Visualization failed: {e}")
 
 # --- Footer ---
 st.markdown("---")
