@@ -1,77 +1,114 @@
+# app.py
+"""
+IVC Symbolic Visualizer
+Streamlit application for exploring resonance matrices,
+symbolic energy fields, and cluster coherence networks.
+"""
+
 import streamlit as st
 import numpy as np
 import pandas as pd
-import json
-from modules.analytics import resonance_matrix, find_resonant_clusters, generate_resonance_spectrum
-from modules.visuals import render_symbol_map  # only if visuals.py exists
-from modules.mapping import load_lattice, generate_connections, merge_lattices, build_symbolic_lattice_from_vector_data
 
-# --- APP CONFIGURATION ---
+# Import from local modules
+from modules.analytics import (
+    compute_resonance_matrix,
+    find_resonant_clusters,
+    generate_sample_data,
+)
+from modules.visuals import render_symbol_map
+
+
+# -----------------------------
+# APP CONFIGURATION
+# -----------------------------
 st.set_page_config(
     page_title="IVC Symbolic Visualizer",
-    layout="centered",
-    initial_sidebar_state="expanded"
+    page_icon="🌐",
+    layout="wide"
 )
 
-st.title("🌀 IVC Symbolic Visualization System")
-st.markdown("A live symbolic and energetic mapping interface based on vector and lattice dynamics.")
+st.title("🌐 IVC Symbolic Visualizer")
+st.markdown("""
+A symbolic intelligence visualization tool to explore resonance,
+coherence, and relational mapping across data fields.
+""")
 
-# --- SIDEBAR NAVIGATION ---
-st.sidebar.header("Navigation")
-view = st.sidebar.radio(
-    "Select View:",
-    ["Vector Field", "Symbolic Lattice", "Frequency Analysis"]
-)
 
-# --- SYNTHETIC SAMPLE DATA (auto-generates if none provided) ---
-def generate_sample_vector_data(n=12):
-    x = np.linspace(0, 2*np.pi, n)
-    y = np.linspace(0, 2*np.pi, n)
-    X, Y = np.meshgrid(x, y)
-    U = np.cos(X) * np.sin(Y)
-    V = np.sin(X) * np.cos(Y)
-    data = np.column_stack([X.flatten(), Y.flatten(), U.flatten(), V.flatten()])
-    return data
+# -----------------------------
+# SIDEBAR CONTROLS
+# -----------------------------
+st.sidebar.header("🔧 Configuration")
 
-# --- VIEW 1: VECTOR FIELD VISUALIZATION ---
-if view == "Vector Field":
-    st.subheader("Vector Flow Map")
-    st.write("Visualizes symbolic energy or directional flow patterns.")
+use_sample_data = st.sidebar.checkbox("Use sample data", value=True)
+matrix_size = st.sidebar.slider("Matrix Size (N x N)", 3, 20, 6)
+resonance_threshold = st.sidebar.slider("Resonance Threshold", 0.0, 1.0, 0.6, 0.05)
 
-    n_points = st.slider("Number of sample points", 6, 30, 12)
-    data = generate_sample_vector_data(n_points)
-    plot_vector_field(data, title="Sample Energy Vector Field")
 
-# --- VIEW 2: SYMBOLIC LATTICE VISUALIZATION ---
-elif view == "Symbolic Lattice":
-    st.subheader("Symbolic Lattice Network")
-    st.write("Displays relational connections between symbolic nodes.")
+# -----------------------------
+# DATA LOAD / GENERATION
+# -----------------------------
+if use_sample_data:
+    st.sidebar.success("Using generated sample data.")
+    data = generate_sample_data(matrix_size)
+else:
+    uploaded_file = st.sidebar.file_uploader("Upload CSV Data", type=["csv"])
+    if uploaded_file is not None:
+        data = pd.read_csv(uploaded_file)
+    else:
+        st.warning("Please upload a CSV file or use sample data.")
+        st.stop()
 
-    mode = st.radio("Connection Pattern", ["pairwise", "complete", "random"])
-    nodes = ["Water", "Earth", "Air", "Fire", "Spirit"]
-    connections = generate_connections(nodes, pattern=mode)
-    st.json({"nodes": nodes, "connections": connections})
-    plot_symbolic_lattice(connections, title=f"{mode.capitalize()} Symbolic Network")
 
-# --- VIEW 3: FREQUENCY / RESONANCE ANALYSIS ---
-elif view == "Frequency Analysis":
-    st.subheader("Frequency and Resonance Analysis")
-    st.write("Computes resonance and harmonic clustering between symbolic elements.")
+# -----------------------------
+# COMPUTATION PIPELINE
+# -----------------------------
+st.subheader("Matrix Computation")
 
-    data = generate_sample_vector_data(10)
-    matrix = resonance_matrix(data)
-    clusters = find_resonant_clusters(matrix)
+try:
+    matrix = compute_resonance_matrix(data)
+    st.success("Resonance matrix computed successfully.")
+except Exception as e:
+    st.error(f"Error computing resonance matrix: {e}")
+    st.stop()
 
-    st.markdown("**Resonant Clusters:**")
-    st.write(clusters)
+try:
+    clusters = find_resonant_clusters(matrix, threshold=resonance_threshold)
+    st.success(f"Found {len(clusters)} resonant clusters.")
+except Exception as e:
+    st.error(f"Error finding clusters: {e}")
+    clusters = None
 
-    labels = [f"Node_{i}" for i in range(matrix.shape[0])]
-    spectrum = generate_resonance_spectrum(matrix, labels)
-    show_frequency_chart(spectrum, title="Symbolic Resonance Spectrum")
 
-    st.markdown("**Matrix Preview:**")
-    st.dataframe(matrix)
-
-# --- FOOTER ---
+# -----------------------------
+# VISUALIZATION
+# -----------------------------
 st.markdown("---")
-st.caption("Developed for symbolic-energetic research and visualization.")
+st.header("🌀 Symbolic Visualization")
+
+try:
+    render_symbol_map(matrix=matrix, clusters=clusters)
+except Exception as e:
+    st.error(f"Visualization error: {e}")
+
+
+# -----------------------------
+# DATA INSPECTION
+# -----------------------------
+with st.expander("📊 Inspect Data & Matrix"):
+    st.write("### Source Data")
+    st.dataframe(data)
+
+    st.write("### Resonance Matrix")
+    st.dataframe(pd.DataFrame(matrix))
+
+    if clusters:
+        st.write("### Resonant Clusters")
+        for i, cluster in enumerate(clusters):
+            st.write(f"**Cluster {i + 1}:** {cluster}")
+
+
+# -----------------------------
+# FOOTER
+# -----------------------------
+st.markdown("---")
+st.caption("Built collaboratively for the restoration of balance, communication, and harmony 🌍")
