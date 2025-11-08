@@ -66,3 +66,32 @@ def compute_symbol_energy(df):
     matrix = compute_resonance_matrix(df)
     energy = matrix.mean(axis=1)
     return energy
+
+import numpy as np
+import pandas as pd
+
+def compute_energy_flow(df):
+    """
+    Compute symbolic energy flow vectors between symbols.
+    This function models 'flow' as the directional gradient of resonance strength.
+    Returns a dictionary: {symbol: (dx, dy, dz)} representing flow direction and magnitude.
+    """
+    matrix = compute_resonance_matrix(df)
+    n = len(matrix)
+    symbols = matrix.index.tolist()
+
+    # Convert resonance into a numeric matrix
+    values = matrix.to_numpy()
+    grad_x = np.gradient(values, axis=0)
+    grad_y = np.gradient(values, axis=1)
+
+    # Normalize the gradient fields to represent directional energy vectors
+    flow_vectors = {}
+    for i, sym in enumerate(symbols):
+        gx = np.mean(grad_x[i])
+        gy = np.mean(grad_y[i])
+        gz = np.sin(gx * gy) * 0.5  # small oscillation term for symbolic resonance depth
+        norm = np.sqrt(gx**2 + gy**2 + gz**2) + 1e-9
+        flow_vectors[sym] = (gx / norm, gy / norm, gz / norm)
+
+    return flow_vectors
