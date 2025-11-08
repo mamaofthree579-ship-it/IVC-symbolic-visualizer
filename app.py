@@ -1,15 +1,6 @@
-# app.py
 import streamlit as st
-import numpy as np
-import pandas as pd
-
-# Local module imports
-from modules.analytics import (
-    compute_resonance_matrix,
-    find_resonant_clusters,
-    generate_sample_data,
-)
-from modules.visuals import render_symbol_map
+st.title("✅ Streamlit is Rendering Properly")
+st.write("If you can see this, rendering works fine.")
 
 # -----------------------------
 # CONFIG
