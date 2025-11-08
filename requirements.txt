@@ -10,27 +10,3 @@ requests
 pyyaml
 pathlib
 sys
-
-# Core app framework
-streamlit==1.39.0
-
-# Data manipulation & analysis
-pandas==2.2.3
-numpy==1.26.4
-
-# Visualization
-plotly==5.24.1
-matplotlib==3.9.2
-
-# Machine learning / data structuring support
-scikit-learn==1.5.2
-
-# Geo / network mapping (optional lattice integration)
-networkx==3.4.1
-
-# Utility libraries
-python-dotenv==1.0.1
-requests==2.32.3
-
-# (Optional) if you will use local JSON or vector data
-pyyaml==6.0.2
