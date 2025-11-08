@@ -52,6 +52,10 @@ st.caption("An interactive spatial representation of resonance connections betwe
 fig = render_3d_resonance_field(matrix, labels=matrix.columns)
 st.plotly_chart(fig, use_container_width=True)
 
+# --- Energy Mapping ---
+fig = render_3d_resonance_field(matrix, clusters)
+st.plotly_chart(fig, use_container_width=True)
+
 # --- Footer ---
 st.markdown("---")
 st.markdown(
