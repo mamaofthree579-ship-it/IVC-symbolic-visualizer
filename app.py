@@ -1,80 +1,114 @@
+# app.py
+"""
+IVC Symbolic Visualizer
+Streamlit application for exploring resonance matrices,
+symbolic energy fields, and cluster coherence networks.
+"""
+
 import streamlit as st
-import pandas as pd
 import numpy as np
-import sys
-from pathlib import Path
+import pandas as pd
 
-# --- Ensure /src directory is accessible for imports ---
-BASE_DIR = Path(__file__).resolve().parent
-SRC_DIR = BASE_DIR / "src"
-MODULES_DIR = BASE_DIR / "modules"
-for p in [SRC_DIR, MODULES_DIR]:
-    if p.exists() and str(p) not in sys.path:
-        sys.path.append(str(p))
+# Import from local modules
+from modules.analytics import (
+    compute_resonance_matrix,
+    find_resonant_clusters,
+    generate_sample_data,
+)
+from modules.visuals import render_symbol_map
 
-# --- Imports from our modules ---
-try:
-    from modules.analytics import (
-        generate_sample_data,
-        compute_resonance_matrix,
-        find_resonant_clusters
-    )
-except ImportError as e:
-    st.error(f"ImportError: {e}")
-    st.stop()
 
-# --- Optionally import SRC helpers if present ---
-try:
-    from src.resonance_tools import resonance_matrix as src_resonance_matrix
-    USE_SRC_RESONANCE = True
-except Exception:
-    USE_SRC_RESONANCE = False
-
-# --- Streamlit App Configuration ---
+# -----------------------------
+# APP CONFIGURATION
+# -----------------------------
 st.set_page_config(
-    page_title="Symbolic Resonance Visualizer",
-    page_icon="🔆",
+    page_title="IVC Symbolic Visualizer",
+    page_icon="🌐",
     layout="wide"
 )
 
-st.title("🔆 Symbolic Resonance Visualizer")
-st.caption("Dynamic symbolic field mapping and resonance clustering")
+st.title("🌐 IVC Symbolic Visualizer")
+st.markdown("""
+A symbolic intelligence visualization tool to explore resonance,
+coherence, and relational mapping across data fields.
+""")
 
-# --- Sidebar Controls ---
-st.sidebar.header("Settings")
-num_symbols = st.sidebar.slider("Number of symbols", 3, 12, 6)
-threshold = st.sidebar.slider("Resonance threshold", 0.0, 1.0, 0.8)
 
-# --- Data Generation ---
-data = generate_sample_data(num_symbols)
+# -----------------------------
+# SIDEBAR CONTROLS
+# -----------------------------
+st.sidebar.header("🔧 Configuration")
 
-# --- Resonance Computation (choosing best available source) ---
-if USE_SRC_RESONANCE:
-    st.sidebar.success("Using resonance_matrix from /src tools")
-    matrix = src_resonance_matrix(data)
+use_sample_data = st.sidebar.checkbox("Use sample data", value=True)
+matrix_size = st.sidebar.slider("Matrix Size (N x N)", 3, 20, 6)
+resonance_threshold = st.sidebar.slider("Resonance Threshold", 0.0, 1.0, 0.6, 0.05)
+
+
+# -----------------------------
+# DATA LOAD / GENERATION
+# -----------------------------
+if use_sample_data:
+    st.sidebar.success("Using generated sample data.")
+    data = generate_sample_data(matrix_size)
 else:
-    st.sidebar.info("Using compute_resonance_matrix from modules.analytics")
+    uploaded_file = st.sidebar.file_uploader("Upload CSV Data", type=["csv"])
+    if uploaded_file is not None:
+        data = pd.read_csv(uploaded_file)
+    else:
+        st.warning("Please upload a CSV file or use sample data.")
+        st.stop()
+
+
+# -----------------------------
+# COMPUTATION PIPELINE
+# -----------------------------
+st.subheader("Matrix Computation")
+
+try:
     matrix = compute_resonance_matrix(data)
+    st.success("Resonance matrix computed successfully.")
+except Exception as e:
+    st.error(f"Error computing resonance matrix: {e}")
+    st.stop()
 
-clusters = find_resonant_clusters(matrix, threshold=threshold)
+try:
+    clusters = find_resonant_clusters(matrix, threshold=resonance_threshold)
+    st.success(f"Found {len(clusters)} resonant clusters.")
+except Exception as e:
+    st.error(f"Error finding clusters: {e}")
+    clusters = None
 
-# --- Display Data ---
-st.subheader("Input Data")
-st.dataframe(data)
 
-st.subheader("Resonance Matrix")
-st.dataframe(matrix.style.background_gradient(cmap="viridis"))
-
-st.subheader("Resonant Clusters")
-for c in clusters:
-    st.write(", ".join(sorted(list(c))))
-
-# --- 3D Visualization Placeholder ---
-st.subheader("3D Resonance Field (coming next)")
-st.info("The 3D resonance field will render symbol relationships in spatial form.")
-# When visuals are ready:
-# from modules.visuals import render_resonance_field
-# render_resonance_field(matrix)
-
+# -----------------------------
+# VISUALIZATION
+# -----------------------------
 st.markdown("---")
-st.caption("IVC Symbolic Visualizer · Streamlit Experimental Build")
+st.header("🌀 Symbolic Visualization")
+
+try:
+    render_symbol_map(matrix=matrix, clusters=clusters)
+except Exception as e:
+    st.error(f"Visualization error: {e}")
+
+
+# -----------------------------
+# DATA INSPECTION
+# -----------------------------
+with st.expander("📊 Inspect Data & Matrix"):
+    st.write("### Source Data")
+    st.dataframe(data)
+
+    st.write("### Resonance Matrix")
+    st.dataframe(pd.DataFrame(matrix))
+
+    if clusters:
+        st.write("### Resonant Clusters")
+        for i, cluster in enumerate(clusters):
+            st.write(f"**Cluster {i + 1}:** {cluster}")
+
+
+# -----------------------------
+# FOOTER
+# -----------------------------
+st.markdown("---")
+st.caption("Built collaboratively for the restoration of balance, communication, and harmony 🌍")
