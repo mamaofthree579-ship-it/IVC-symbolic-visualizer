@@ -1,5 +1,6 @@
 import streamlit as st
 import numpy as np
+import pandas as pd
 import json
 from modules.visualization import (
     plot_vector_field,
@@ -13,12 +14,13 @@ from modules.mapping import (
     build_symbolic_lattice_from_vector_data
 )
 from modules.analytics import (
-    calculate_symbol_frequencies,
-    resonance_matrix,
+    normalize_frequency_matrix,
     find_resonant_clusters,
-    convert_matrix_to_edges,
-    generate_resonance_spectrum
-)
+    compute_symbol_correlations,
+    reduce_dimensions,
+    generate_summary_stats,
+    find_resonant_paths,
+    detect_frequency_anomalies
 
 # --- APP CONFIGURATION ---
 st.set_page_config(
