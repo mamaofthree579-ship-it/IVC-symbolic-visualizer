@@ -1,7 +1,50 @@
 import streamlit as st
-st.title("✅ Streamlit is Rendering Properly")
-st.write("If you can see this, rendering works fine.")
+import streamlit as st
+import traceback
 
+st.set_page_config(page_title="IVC Symbolic Visualizer", layout="wide")
+st.title("🌐 IVC Symbolic Visualizer - Debug Mode")
+
+try:
+    st.write("🔹 Importing modules...")
+    from modules.analytics import (
+        compute_resonance_matrix,
+        find_resonant_clusters,
+        generate_sample_data,
+    )
+    from modules.visuals import render_symbol_map
+    st.write("✅ Modules imported successfully.")
+except Exception as e:
+    st.error("Module import failed.")
+    st.code(traceback.format_exc())
+    st.stop()
+
+st.write("🔹 Generating data...")
+try:
+    data = generate_sample_data(5)
+    st.dataframe(data)
+except Exception as e:
+    st.error("Data generation failed.")
+    st.code(traceback.format_exc())
+    st.stop()
+
+st.write("🔹 Computing resonance matrix...")
+try:
+    matrix = compute_resonance_matrix(data)
+    st.write(matrix)
+except Exception as e:
+    st.error("Matrix computation failed.")
+    st.code(traceback.format_exc())
+    st.stop()
+
+st.write("🔹 Visualizing...")
+try:
+    render_symbol_map(matrix=matrix, clusters=[])
+    st.success("✅ Visualization completed.")
+except Exception as e:
+    st.error("Visualization failed.")
+    st.code(traceback.format_exc())
+    
 # -----------------------------
 # CONFIG
 # -----------------------------
