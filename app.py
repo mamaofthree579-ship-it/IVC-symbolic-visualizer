@@ -1,77 +1,62 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import plotly.graph_objects as go
-import networkx as nx
-import time
-from pathlib import Path
-import sys
 
-# --- Streamlit setup
-st.set_page_config(page_title="Symbolic Resonance Visualizer", layout="wide")
-st.title("🌐 Symbolic Resonance Visualizer")
+from modules.analytics import generate_sample_data, compute_resonance_matrix, find_resonant_clusters
+from src.vector_plot import render_3d_resonance_field
 
-# --- Diagnostic heartbeat
-st.markdown("### 🔄 Diagnostic Check")
-st.write("App started successfully ✅")
+st.set_page_config(page_title="IVC Symbolic Visualizer", layout="wide")
 
-# --- Path setup
-BASE_DIR = Path(__file__).resolve().parent
-MODULES_DIR = BASE_DIR / "modules"
-SRC_DIR = BASE_DIR / "src"
+# App title
+st.title("🌐 IVC Symbolic Visualizer")
+st.write("An interactive system for mapping resonance between symbolic datasets.")
 
-for p in [MODULES_DIR, SRC_DIR]:
-    if str(p) not in sys.path:
-        sys.path.append(str(p))
+# --- Data Input Section ---
+st.sidebar.header("Data Controls")
 
-try:
-    from modules.analytics import (
-        generate_sample_data,
-        compute_resonance_matrix,
-        find_resonant_clusters,
-    )
-    st.success("✅ Module import successful.")
-except Exception as e:
-    st.error(f"Module import failed: {e}")
-    st.stop()
+data_option = st.sidebar.selectbox(
+    "Choose input data source:",
+    ["Generate Sample Data", "Upload CSV"]
+)
 
-# --- Sidebar controls
-st.sidebar.header("Configuration")
-num_symbols = st.sidebar.slider("Number of symbols", 3, 15, 6)
-threshold = st.sidebar.slider("Resonance threshold", 0.0, 1.0, 0.8)
+if data_option == "Upload CSV":
+    uploaded_file = st.sidebar.file_uploader("Upload your CSV file", type=["csv"])
+    if uploaded_file:
+        data = pd.read_csv(uploaded_file, index_col=0)
+    else:
+        st.warning("Please upload a CSV to continue.")
+        st.stop()
+else:
+    n_symbols = st.sidebar.slider("Number of symbols", 3, 12, 6)
+    data = generate_sample_data(n_symbols)
 
-# --- Generate data
-data = generate_sample_data(num_symbols)
+st.subheader("Symbolic Data Matrix")
+st.dataframe(data.style.background_gradient(cmap="viridis"), use_container_width=True)
+
+# --- Resonance Matrix Computation ---
 matrix = compute_resonance_matrix(data)
-clusters = find_resonant_clusters(matrix, threshold)
 
-st.subheader("📊 Resonance Matrix")
-st.dataframe(matrix)
+st.subheader("Resonance Matrix")
+st.dataframe(matrix.style.background_gradient(cmap="plasma"), use_container_width=True)
 
-# --- Visualization step
-st.markdown("### 🖼 Rendering heatmap...")
+# --- Resonant Clusters ---
+clusters = find_resonant_clusters(matrix)
+st.subheader("Resonant Clusters")
+for i, cluster in enumerate(clusters, start=1):
+    st.write(f"**Cluster {i}:** {', '.join(cluster)}")
 
-try:
-    fig = go.Figure(
-        data=go.Heatmap(
-            z=matrix.values,
-            x=matrix.columns,
-            y=matrix.index,
-            colorscale="Viridis",
-            zmin=0,
-            zmax=1,
-        )
-    )
-    fig.update_layout(title="Resonance Heatmap", height=500)
-    st.plotly_chart(fig, use_container_width=True)
-    st.success("✅ Heatmap rendered successfully.")
-except Exception as e:
-    st.error(f"Heatmap error: {e}")
+# --- 3D Resonance Visualization ---
+st.subheader("3D Resonance Field")
+st.caption("An interactive spatial representation of resonance connections between symbols.")
 
-# --- Show clusters
-st.markdown("### 🔹 Identified Clusters")
-for c in clusters:
-    st.write(", ".join(c))
+fig = render_3d_resonance_field(matrix, labels=matrix.columns)
+st.plotly_chart(fig, use_container_width=True)
 
+# --- Footer ---
 st.markdown("---")
-st.caption(f"Render complete — timestamp: {time.strftime('%X')}")
+st.markdown(
+    "<p style='text-align:center; color:gray;'>"
+    "IVC Symbolic Visualizer © 2025 – Built for exploratory mapping and symbolic coherence research."
+    "</p>",
+    unsafe_allow_html=True
+)
