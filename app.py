@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 
-from modules.analytics import generate_sample_data, compute_resonance_matrix, find_resonant_clusters
+from modules.analytics import generate_sample_data, compute_resonance_matrix,find_resonant_clusters, compute_energy_flow, compute_symbol_energy
 from src.vector_plot import render_3d_resonance_field
 
 st.set_page_config(page_title="IVC Symbolic Visualizer", layout="wide")
