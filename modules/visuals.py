@@ -1,52 +1,118 @@
-import matplotlib.pyplot as plt
-import numpy as np
+# modules/visuals.py
+"""
+Visualization utilities for the IVC Symbolic Visualizer.
+This module provides heatmaps, network graphs, and basic
+symbolic vector field representations.
+"""
+
 import streamlit as st
+import plotly.graph_objects as go
+import matplotlib.pyplot as plt
+import networkx as nx
+import numpy as np
 
-def plot_vector_field(data, title="Vector Flow Map"):
+# --- 1. Resonance Matrix Visualization ---
+def render_resonance_heatmap(matrix, labels=None, title="Resonance Matrix"):
     """
-    Displays a 2D vector field based on input data.
-    :param data: dict or np.ndarray with 'x', 'y', 'u', 'v' components
-    :param title: str, title for the plot
+    Display a heatmap of the resonance matrix.
     """
-    if isinstance(data, dict):
-        x, y, u, v = data['x'], data['y'], data['u'], data['v']
-    else:
-        x, y, u, v = data[:,0], data[:,1], data[:,2], data[:,3]
+    if matrix is None:
+        st.warning("No matrix data available for visualization.")
+        return
 
-    fig, ax = plt.subplots(figsize=(6, 6))
-    q = ax.quiver(x, y, u, v, color='royalblue', angles='xy', scale_units='xy', scale=1)
-    ax.set_title(title)
-    ax.set_xlabel('X-axis')
-    ax.set_ylabel('Y-axis')
-    ax.set_aspect('equal')
-    st.pyplot(fig)
+    # Ensure numpy array
+    mat = np.array(matrix, dtype=float)
+    n = mat.shape[0]
 
-def plot_symbolic_lattice(connections, title="Symbolic Lattice Map"):
+    if labels is None:
+        labels = [f"Node_{i}" for i in range(n)]
+
+    fig = go.Figure(
+        data=go.Heatmap(
+            z=mat,
+            x=labels,
+            y=labels,
+            colorscale="Viridis",
+            hoverongaps=False,
+            colorbar=dict(title="Resonance")
+        )
+    )
+    fig.update_layout(title=title, xaxis_title="Symbols", yaxis_title="Symbols")
+    st.plotly_chart(fig, use_container_width=True)
+
+
+# --- 2. Cluster Graph Visualization ---
+def render_resonant_clusters(matrix, clusters, labels=None, title="Resonant Clusters"):
     """
-    Draws a symbolic relational map based on node connections.
-    :param connections: list of tuples [(node1, node2), ...]
+    Visualize clusters of resonant symbols as a network graph.
     """
-    import networkx as nx
+    if matrix is None or clusters is None:
+        st.warning("No cluster data available for visualization.")
+        return
+
+    mat = np.array(matrix, dtype=float)
     G = nx.Graph()
-    G.add_edges_from(connections)
 
-    fig, ax = plt.subplots(figsize=(6, 6))
+    if labels is None:
+        labels = [f"Node_{i}" for i in range(mat.shape[0])]
+
+    # Add edges for each cluster
+    for group in clusters:
+        for i in group:
+            for j in group:
+                if i != j:
+                    G.add_edge(labels[i], labels[j], weight=mat[i, j])
+
+    # Draw layout
     pos = nx.spring_layout(G, seed=42)
-    nx.draw(G, pos, with_labels=True, node_color='lightgreen', edge_color='gray', node_size=800, ax=ax)
-    ax.set_title(title)
-    st.pyplot(fig)
+    plt.figure(figsize=(8, 6))
+    nx.draw(
+        G,
+        pos,
+        with_labels=True,
+        node_color="lightblue",
+        edge_color="gray",
+        node_size=700,
+        font_size=10
+    )
+    plt.title(title)
+    st.pyplot(plt)
 
-def show_frequency_chart(frequencies, title="Frequency / Resonance Chart"):
-    """
-    Visualizes frequencies and their resonance intensity.
-    :param frequencies: dict, key=label, value=frequency magnitude
-    """
-    labels = list(frequencies.keys())
-    values = list(frequencies.values())
 
-    fig, ax = plt.subplots(figsize=(6, 4))
-    ax.bar(labels, values, color='goldenrod')
-    ax.set_title(title)
-    ax.set_xlabel('Symbolic Element')
-    ax.set_ylabel('Frequency Magnitude (Hz)')
-    st.pyplot(fig)
+# --- 3. Simple Energy Flow Plot ---
+def render_energy_field(vectors, title="Energy Flow Field"):
+    """
+    Display a quiver plot showing energy flow (2D vector field).
+    """
+    if vectors is None or len(vectors) == 0:
+        st.info("No vector data provided for energy field visualization.")
+        return
+
+    vectors = np.array(vectors)
+    X, Y = np.meshgrid(np.linspace(-1, 1, vectors.shape[0]), np.linspace(-1, 1, vectors.shape[1]))
+    U = np.sin(np.pi * X) * np.cos(np.pi * Y)
+    V = -np.cos(np.pi * X) * np.sin(np.pi * Y)
+
+    plt.figure(figsize=(6, 6))
+    plt.quiver(X, Y, U, V, color="teal")
+    plt.title(title)
+    plt.xlabel("X-axis")
+    plt.ylabel("Y-axis")
+    st.pyplot(plt)
+
+
+# --- 4. Dispatcher Function ---
+def render_symbol_map(matrix=None, clusters=None, vectors=None):
+    """
+    A unified renderer to visualize matrix, clusters, and field data in sequence.
+    """
+    st.subheader("Visual Overview")
+
+    if matrix is not None:
+        render_resonance_heatmap(matrix)
+
+    if clusters is not None and len(clusters) > 0:
+        render_resonant_clusters(matrix, clusters)
+
+    if vectors is not None:
+        render_energy_field(vectors)
