@@ -11,10 +11,7 @@ from modules.analytics import (
     compute_symbol_energy
 )
 
-from src.vector_plot import (
-    render_3d_resonance_field,
-    render_energy_flow_field
-)
+from src.vector_plot import render_3d_resonance_field, render_energy_flow_field
 
 # ---------------------------------------------------------------------
 # Page Setup
