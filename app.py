@@ -1,6 +1,7 @@
 import streamlit as st
 from src.vector_data import sample_water_symbol
 from src.vector_plot import draw_vector_field
+from modules.visualization import plot_vector_field, plot_symbolic_lattice, show_frequency_chart
 
 st.set_page_config(page_title='IVC Symbolic Visualizer', layout='centered')
 
