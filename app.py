@@ -54,7 +54,7 @@ except Exception as e:
     st.error(f"Visualization failed: {e}")
 
 # --- Energy Mapping ---
-flow_vectors = compute_energy_flow(data)
+flow_vectors = compute_energy_flow(matrix)
 st.subheader("🌊 Symbolic Energy Flow Field")
 fig_flow = render_energy_flow_field(data, flow_vectors)
 st.plotly_chart(fig_flow, use_container_width=True)
