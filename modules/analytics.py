@@ -9,26 +9,21 @@ def generate_sample_data(n=5):
     df = pd.DataFrame(values, columns=symbols, index=symbols)
     return df
 
+
 def compute_resonance_matrix(df):
-    """
-    Compute a resonance matrix showing symbolic interaction strength.
-    Uses cosine similarity between rows as a proxy for resonance.
-    """
+    """Compute cosine similarity as a symbolic resonance matrix."""
     data = df.to_numpy()
     norm = np.linalg.norm(data, axis=1, keepdims=True)
     normalized = data / (norm + 1e-9)
     resonance = np.dot(normalized, normalized.T)
     return pd.DataFrame(resonance, index=df.index, columns=df.columns)
 
+
 def find_resonant_clusters(matrix, threshold=0.8):
-    """
-    Find clusters of highly resonant symbols.
-    Returns a list of sets, each representing a cluster.
-    """
+    """Identify clusters of symbols with high resonance."""
     clusters = []
     n = matrix.shape[0]
     visited = set()
-
     for i in range(n):
         if i in visited:
             continue
@@ -40,58 +35,35 @@ def find_resonant_clusters(matrix, threshold=0.8):
         clusters.append({matrix.index[k] for k in cluster})
     return clusters
 
-def compute_energy_flow(df):
-    """
-    Compute directional energy flow between symbols based on resonance differences.
-    Returns a list of energy vectors (source, target, magnitude).
-    """
-    matrix = compute_resonance_matrix(df)
-    flow_vectors = []
-
-    for i, source in enumerate(matrix.index):
-        for j, target in enumerate(matrix.columns):
-            if i != j:
-                magnitude = matrix.iloc[i, j] - matrix.iloc[j, i]
-                if abs(magnitude) > 0.05:  # only meaningful flows
-                    flow_vectors.append((source, target, magnitude))
-
-    return flow_vectors
-
-def compute_symbol_energy(df):
-    """
-    Compute the overall 'energy level' of each symbol.
-    Based on mean interaction strength with all other symbols.
-    Returns a pandas Series mapping symbol → energy value.
-    """
-    matrix = compute_resonance_matrix(df)
-    energy = matrix.mean(axis=1)
-    return energy
-
-import numpy as np
-import pandas as pd
 
 def compute_energy_flow(df):
     """
     Compute symbolic energy flow vectors between symbols.
-    This function models 'flow' as the directional gradient of resonance strength.
-    Returns a dictionary: {symbol: (dx, dy, dz)} representing flow direction and magnitude.
+    Modeled as directional gradients of resonance.
     """
     matrix = compute_resonance_matrix(df)
     n = len(matrix)
     symbols = matrix.index.tolist()
 
-    # Convert resonance into a numeric matrix
     values = matrix.to_numpy()
     grad_x = np.gradient(values, axis=0)
     grad_y = np.gradient(values, axis=1)
 
-    # Normalize the gradient fields to represent directional energy vectors
     flow_vectors = {}
     for i, sym in enumerate(symbols):
         gx = np.mean(grad_x[i])
         gy = np.mean(grad_y[i])
-        gz = np.sin(gx * gy) * 0.5  # small oscillation term for symbolic resonance depth
+        gz = np.sin(gx * gy) * 0.5  # resonance depth
         norm = np.sqrt(gx**2 + gy**2 + gz**2) + 1e-9
         flow_vectors[sym] = (gx / norm, gy / norm, gz / norm)
 
     return flow_vectors
+
+
+def compute_symbol_energy(df):
+    """
+    Compute total resonance energy per symbol.
+    """
+    matrix = compute_resonance_matrix(df)
+    energy = matrix.sum(axis=1)
+    return pd.DataFrame({"Symbol": matrix.index, "Energy": energy})
