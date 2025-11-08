@@ -12,14 +12,22 @@ def generate_sample_data(n=5):
 def compute_resonance_matrix(df):
     """
     Compute a resonance matrix showing symbolic interaction strength.
-    For now, uses cosine similarity between rows as a proxy for resonance.
+    Ensures output labels match matrix shape.
     """
+    import numpy as np
+    import pandas as pd
+
+    if not isinstance(df, pd.DataFrame):
+        raise ValueError("Input must be a pandas DataFrame")
+
     data = df.to_numpy()
     norm = np.linalg.norm(data, axis=1, keepdims=True)
     normalized = data / (norm + 1e-9)
     resonance = np.dot(normalized, normalized.T)
-    return pd.DataFrame(resonance, index=df.index, columns=df.columns)
 
+    # Ensure consistent labeling
+    symbols = list(df.index)
+    return pd.DataFrame(resonance, index=symbols, columns=symbols)
 def find_resonant_clusters(matrix, threshold=0.8):
     """
     Find clusters of highly resonant symbols.
