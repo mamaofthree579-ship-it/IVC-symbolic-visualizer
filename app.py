@@ -3,17 +3,8 @@ import pandas as pd
 import numpy as np
 
 # Import your internal modules
-from modules.analytics import (
-    generate_sample_data,
-    compute_resonance_matrix,
-    find_resonant_clusters,
-    compute_energy_flow,
-    compute_symbol_energy
-)
-from src.vector_plot import (
-    render_3d_resonance_field,
-    render_energy_flow_field
-)
+from modules.analytics import generate_sample_data, compute_resonance_matrix, find_resonant_clusters, compute_energy_flow, compute_symbol_energy
+from src.vector_plot import render_3d_resonance_field, render_energy_flow_field
 
 # ---------------------------------------------------------------------
 # Page Setup
