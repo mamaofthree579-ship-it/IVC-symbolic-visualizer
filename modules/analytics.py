@@ -1,5 +1,26 @@
 import numpy as np
-import pandas as pd
+
+def find_resonant_clusters(matrix, threshold=0.75):
+    """
+    Identify clusters of symbols with resonance above a certain threshold.
+    """
+    # Ensure matrix is a NumPy array
+    matrix = np.array(matrix)
+
+    clusters = []
+    used = set()
+
+    for i in range(matrix.shape[0]):
+        if i in used:
+            continue
+        cluster = [i]
+        for j in range(matrix.shape[1]):
+            if i != j and matrix[i, j] > threshold:
+                cluster.append(j)
+                used.add(j)
+        clusters.append(cluster)
+
+    return clusters
 
 def calculate_symbol_frequencies(symbol_series):
     """
@@ -21,23 +42,6 @@ def resonance_matrix(vector_data, normalize=True):
     if normalize:
         matrix = (matrix - matrix.min()) / (matrix.max() - matrix.min())
     return matrix
-
-def find_resonant_clusters(matrix, threshold=0.8):
-    """
-    Identifies clusters of highly resonant nodes based on correlation threshold.
-    Returns list of sets (each cluster is a set of node indices).
-    """
-    clusters = []
-    visited = set()
-    for i in range(matrix.shape[0]):
-        if i not in visited:
-            cluster = {i}
-            for j in range(matrix.shape[1]):
-                if matrix[i, j] >= threshold and i != j:
-                    cluster.add(j)
-                    visited.add(j)
-            clusters.append(cluster)
-    return clusters
 
 def convert_matrix_to_edges(matrix, labels):
     """
