@@ -1,15 +1,9 @@
 # app.py
-"""
-IVC Symbolic Visualizer
-Streamlit application for exploring resonance matrices,
-symbolic energy fields, and cluster coherence networks.
-"""
-
 import streamlit as st
 import numpy as np
 import pandas as pd
 
-# Import from local modules
+# Local module imports
 from modules.analytics import (
     compute_resonance_matrix,
     find_resonant_clusters,
@@ -17,22 +11,16 @@ from modules.analytics import (
 )
 from modules.visuals import render_symbol_map
 
-
 # -----------------------------
-# APP CONFIGURATION
+# CONFIG
 # -----------------------------
-st.set_page_config(
-    page_title="IVC Symbolic Visualizer",
-    page_icon="🌐",
-    layout="wide"
-)
-
+st.set_page_config(page_title="IVC Symbolic Visualizer", page_icon="🌐", layout="wide")
 st.title("🌐 IVC Symbolic Visualizer")
-st.markdown("""
-A symbolic intelligence visualization tool to explore resonance,
-coherence, and relational mapping across data fields.
-""")
 
+st.markdown("""
+Explore resonance, coherence, and symbolic field mapping  
+to visualize energy and relational harmonics across data systems.
+""")
 
 # -----------------------------
 # SIDEBAR CONTROLS
@@ -43,72 +31,76 @@ use_sample_data = st.sidebar.checkbox("Use sample data", value=True)
 matrix_size = st.sidebar.slider("Matrix Size (N x N)", 3, 20, 6)
 resonance_threshold = st.sidebar.slider("Resonance Threshold", 0.0, 1.0, 0.6, 0.05)
 
-
 # -----------------------------
-# DATA LOAD / GENERATION
+# DATA SETUP
 # -----------------------------
 if use_sample_data:
-    st.sidebar.success("Using generated sample data.")
     data = generate_sample_data(matrix_size)
+    st.sidebar.success("Generated sample data.")
 else:
     uploaded_file = st.sidebar.file_uploader("Upload CSV Data", type=["csv"])
-    if uploaded_file is not None:
+    if uploaded_file:
         data = pd.read_csv(uploaded_file)
+        st.sidebar.success("Custom CSV loaded successfully.")
     else:
-        st.warning("Please upload a CSV file or use sample data.")
+        st.warning("Please upload a CSV file or enable sample data.")
         st.stop()
 
+# Display quick preview
+st.subheader("📄 Source Data Preview")
+st.dataframe(data.head())
 
 # -----------------------------
-# COMPUTATION PIPELINE
+# COMPUTE RESONANCE MATRIX
 # -----------------------------
-st.subheader("Matrix Computation")
+st.subheader("🔢 Resonance Computation")
 
 try:
     matrix = compute_resonance_matrix(data)
     st.success("Resonance matrix computed successfully.")
+    st.dataframe(pd.DataFrame(matrix))
 except Exception as e:
     st.error(f"Error computing resonance matrix: {e}")
     st.stop()
 
+# -----------------------------
+# CLUSTER DETECTION
+# -----------------------------
 try:
     clusters = find_resonant_clusters(matrix, threshold=resonance_threshold)
-    st.success(f"Found {len(clusters)} resonant clusters.")
+    if clusters:
+        st.success(f"Found {len(clusters)} resonant clusters.")
+    else:
+        st.info("No strong clusters detected at this threshold.")
 except Exception as e:
     st.error(f"Error finding clusters: {e}")
-    clusters = None
-
+    clusters = []
 
 # -----------------------------
 # VISUALIZATION
 # -----------------------------
 st.markdown("---")
-st.header("🌀 Symbolic Visualization")
+st.header("🌀 Resonance Visualization")
 
 try:
     render_symbol_map(matrix=matrix, clusters=clusters)
 except Exception as e:
     st.error(f"Visualization error: {e}")
-
-
-# -----------------------------
-# DATA INSPECTION
-# -----------------------------
-with st.expander("📊 Inspect Data & Matrix"):
-    st.write("### Source Data")
-    st.dataframe(data)
-
-    st.write("### Resonance Matrix")
+    st.write("Fallback view:")
     st.dataframe(pd.DataFrame(matrix))
 
+# -----------------------------
+# INSPECTION
+# -----------------------------
+with st.expander("🔍 Inspect Details"):
+    st.write("### Raw Resonance Matrix")
+    st.dataframe(pd.DataFrame(matrix))
     if clusters:
-        st.write("### Resonant Clusters")
         for i, cluster in enumerate(clusters):
             st.write(f"**Cluster {i + 1}:** {cluster}")
-
 
 # -----------------------------
 # FOOTER
 # -----------------------------
 st.markdown("---")
-st.caption("Built collaboratively for the restoration of balance, communication, and harmony 🌍")
+st.caption("Developed for symbolic field visualization and coherence mapping 🌍")
