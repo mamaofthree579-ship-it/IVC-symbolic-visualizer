@@ -90,3 +90,46 @@ def render_3d_resonance_field(matrix, clusters=None):
 
     # ✅ Ensure a figure object is always returned
     return fig
+
+
+def render_3d_energy_field(df, energy_df):
+    """
+    Visualize symbols in 3D space using PCA and map energy & frequency to color and size.
+    """
+    pca = PCA(n_components=3)
+    coords = pca.fit_transform(df.values)
+
+    symbols = df.index
+    energy = energy_df.loc[symbols, "Energy"]
+    freq = energy_df.loc[symbols, "Frequency"]
+
+    fig = go.Figure(data=[
+        go.Scatter3d(
+            x=coords[:, 0],
+            y=coords[:, 1],
+            z=coords[:, 2],
+            mode="markers+text",
+            text=symbols,
+            marker=dict(
+                size=10 + 20 * energy,  # size scales with energy
+                color=freq,              # color maps to frequency
+                colorscale="Viridis",
+                opacity=0.9,
+                line=dict(width=1, color="white")
+            ),
+            textposition="top center"
+        )
+    ])
+
+    fig.update_layout(
+        title="Symbolic Energy–Frequency Field",
+        scene=dict(
+            xaxis_title="Energy X",
+            yaxis_title="Energy Y",
+            zaxis_title="Energy Z"
+        ),
+        height=700,
+        showlegend=False,
+    )
+
+    return fig
