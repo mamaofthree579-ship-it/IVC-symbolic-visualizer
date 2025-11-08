@@ -1,55 +1,51 @@
+# modules/analytics.py
 import numpy as np
 import pandas as pd
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.metrics.pairwise import cosine_similarity
 
-def resonance_matrix(data: pd.DataFrame) -> np.ndarray:
+def resonance_matrix(data):
     """
-    Compute a resonance (similarity) matrix from input data.
-    The result is an NxN matrix where each cell indicates 
-    how strongly two symbols, words, or entities resonate with each other.
-
-    Parameters
-    ----------
-    data : pd.DataFrame
-        Input dataset, where each row is an entity and 
-        each column is a feature.
-
-    Returns
-    -------
-    np.ndarray
-        NxN resonance/similarity matrix.
+    Compute a resonance/similarity matrix from input data.
+    Accepts a pandas DataFrame or a 2D numpy array-like of numeric features.
+    Returns an NxN numpy.ndarray (cosine similarity).
     """
-    if data is None or len(data) == 0:
-        raise ValueError("Input data is empty or None")
+    # Accept DataFrame or numpy array
+    if data is None:
+        raise ValueError("No data provided to resonance_matrix()")
 
-    # Normalize data
+    # If DataFrame, select numeric columns and use their values
+    if isinstance(data, pd.DataFrame):
+        numeric = data.select_dtypes(include=[np.number])
+        if numeric.shape[1] == 0:
+            raise ValueError("DataFrame must contain numeric columns")
+        arr = numeric.values
+    else:
+        arr = np.array(data, dtype=float)
+        if arr.ndim != 2:
+            raise ValueError("Input array must be 2D (rows=entities, cols=features)")
+
+    # Normalize features to 0-1 range to stabilize cosine similarity
     scaler = MinMaxScaler()
-    normalized = scaler.fit_transform(data.select_dtypes(include=[np.number]))
+    arr_scaled = scaler.fit_transform(arr)
 
-    # Compute cosine similarity as resonance metric
-    matrix = cosine_similarity(normalized)
-    return matrix
+    # Compute cosine similarity (rows vs rows)
+    mat = cosine_similarity(arr_scaled)
+    return np.array(mat, dtype=float)
 
 
-def find_resonant_clusters(matrix: np.ndarray, threshold: float = 0.85):
+def find_resonant_clusters(matrix, threshold=0.85):
     """
-    Identify clusters of entities that exhibit high resonance.
-
-    Parameters
-    ----------
-    matrix : np.ndarray
-        Resonance matrix (NxN).
-    threshold : float
-        Minimum resonance value for clustering (default 0.85).
-
-    Returns
-    -------
-    list[list[int]]
-        A list of clusters, each a list of indices.
+    Identify clusters of indices where pairwise resonance >= threshold.
+    Input:
+      - matrix: square numpy array (NxN)
+      - threshold: float (0..1)
+    Returns:
+      - list of lists (clusters of indices)
     """
-    if not isinstance(matrix, np.ndarray):
-        raise TypeError("Input must be a numpy ndarray")
+    matrix = np.asarray(matrix, dtype=float)
+    if matrix.ndim != 2 or matrix.shape[0] != matrix.shape[1]:
+        raise ValueError("matrix must be a square 2D array")
 
     n = matrix.shape[0]
     visited = set()
@@ -58,41 +54,26 @@ def find_resonant_clusters(matrix: np.ndarray, threshold: float = 0.85):
     for i in range(n):
         if i in visited:
             continue
-        cluster = [i]
+        group = [i]
         visited.add(i)
         for j in range(n):
-            if i != j and matrix[i, j] >= threshold:
-                cluster.append(j)
+            if i == j:
+                continue
+            if matrix[i, j] >= threshold:
+                group.append(j)
                 visited.add(j)
-        if len(cluster) > 1:
-            clusters.append(cluster)
-
+        if len(group) > 1:
+            clusters.append(sorted(group))
     return clusters
 
 
-def summarize_clusters(data: pd.DataFrame, clusters: list):
+def generate_resonance_spectrum(matrix, labels=None):
     """
-    Summarize each cluster with entity names or key stats.
-
-    Parameters
-    ----------
-    data : pd.DataFrame
-        Original dataset.
-    clusters : list[list[int]]
-        Cluster index groups.
-
-    Returns
-    -------
-    list[dict]
-        Summary info for each cluster.
+    Return average resonance per row as dict {label: value}.
+    If labels is None, uses integers as labels.
     """
-    summaries = []
-    for c in clusters:
-        subset = data.iloc[c]
-        summary = {
-            "size": len(c),
-            "mean_values": subset.mean().to_dict(),
-            "members": subset.index.tolist()
-        }
-        summaries.append(summary)
-    return summaries
+    mat = np.asarray(matrix, dtype=float)
+    avg = mat.mean(axis=1)
+    if labels is None:
+        labels = [f"Node_{i}" for i in range(mat.shape[0])]
+    return {labels[i]: float(avg[i]) for i in range(mat.shape[0])}
