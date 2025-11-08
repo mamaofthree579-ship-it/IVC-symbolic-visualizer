@@ -56,3 +56,13 @@ def compute_energy_flow(df):
                     flow_vectors.append((source, target, magnitude))
 
     return flow_vectors
+
+def compute_symbol_energy(df):
+    """
+    Compute the overall 'energy level' of each symbol.
+    Based on mean interaction strength with all other symbols.
+    Returns a pandas Series mapping symbol → energy value.
+    """
+    matrix = compute_resonance_matrix(df)
+    energy = matrix.mean(axis=1)
+    return energy
