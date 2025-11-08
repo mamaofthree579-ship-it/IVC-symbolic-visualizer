@@ -2,26 +2,9 @@ import streamlit as st
 import numpy as np
 import pandas as pd
 import json
-from modules.visualization import (
-    plot_vector_field,
-    plot_symbolic_lattice,
-    show_frequency_chart
-)
-from modules.mapping import (
-    load_lattice,
-    generate_connections,
-    merge_lattices,
-    build_symbolic_lattice_from_vector_data
-)
-from modules.analytics import (
-    normalize_frequency_matrix,
-    find_resonant_clusters,
-    compute_symbol_correlations,
-    reduce_dimensions,
-    generate_summary_stats,
-    find_resonant_paths,
-    detect_frequency_anomalies
-)
+from modules.analytics import resonance_matrix, find_resonant_clusters, generate_resonance_spectrum
+from modules.visuals import render_symbol_map  # only if visuals.py exists
+from modules.mapping import load_lattice, generate_connections, merge_lattices, build_symbolic_lattice_from_vector_data
 
 # --- APP CONFIGURATION ---
 st.set_page_config(
