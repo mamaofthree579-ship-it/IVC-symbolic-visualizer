@@ -41,25 +41,19 @@ def find_resonant_clusters(matrix, threshold=0.8):
 
     return clusters
 
-def compute_symbol_energy(df):
+def compute_energy_flow(df):
     """
-    Compute an 'energy frequency' vector for each symbol based on its resonance interactions.
-    Returns a DataFrame with energy amplitude and phase values for visualization.
+    Compute directional energy flow between symbols based on resonance differences.
+    Returns a list of energy vectors (source, target, magnitude).
     """
-    import numpy as np
-    import pandas as pd
+    matrix = compute_resonance_matrix(df)
+    flow_vectors = []
 
-    resonance = compute_resonance_matrix(df).to_numpy()
-    energy = np.sum(resonance, axis=1)
-    normalized_energy = energy / np.max(energy)
+    for i, source in enumerate(matrix.index):
+        for j, target in enumerate(matrix.columns):
+            if i != j:
+                magnitude = matrix.iloc[i, j] - matrix.iloc[j, i]
+                if abs(magnitude) > 0.05:  # only meaningful flows
+                    flow_vectors.append((source, target, magnitude))
 
-    # Simulated frequency phase (using eigen decomposition)
-    eigenvalues, _ = np.linalg.eig(resonance)
-    freq = np.abs(np.real(eigenvalues))
-    freq = freq / np.max(freq)
-
-    return pd.DataFrame({
-        "Symbol": df.index,
-        "Energy": normalized_energy,
-        "Frequency": freq
-    }).set_index("Symbol")
+    return flow_vectors
