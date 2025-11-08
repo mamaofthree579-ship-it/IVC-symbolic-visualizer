@@ -1,13 +1,19 @@
-pandas
-numpy
-streamit
-plotly.graph_objects
-matplotlib
-scikit-learn
-networkx
-python-dotenv
-requests
-pyyaml
-pathlib
-sys
-pip -> 25.3
+# Core app framework
+streamlit>=1.39.0
+
+# Data handling
+pandas>=2.2.2
+numpy>=1.26.4
+
+# Visualization
+plotly>=5.24.0
+matplotlib>=3.9.2
+networkx>=3.3
+
+# Utility / optional support
+scipy>=1.13.0
+pyyaml>=6.0.2
+
+# (Optional) For local development / linting
+black>=24.3.0
+flake8>=7.1.0
