@@ -40,3 +40,26 @@ def find_resonant_clusters(matrix, threshold=0.8):
         clusters.append({matrix.index[k] for k in cluster})
 
     return clusters
+
+def compute_symbol_energy(df):
+    """
+    Compute an 'energy frequency' vector for each symbol based on its resonance interactions.
+    Returns a DataFrame with energy amplitude and phase values for visualization.
+    """
+    import numpy as np
+    import pandas as pd
+
+    resonance = compute_resonance_matrix(df).to_numpy()
+    energy = np.sum(resonance, axis=1)
+    normalized_energy = energy / np.max(energy)
+
+    # Simulated frequency phase (using eigen decomposition)
+    eigenvalues, _ = np.linalg.eig(resonance)
+    freq = np.abs(np.real(eigenvalues))
+    freq = freq / np.max(freq)
+
+    return pd.DataFrame({
+        "Symbol": df.index,
+        "Energy": normalized_energy,
+        "Frequency": freq
+    }).set_index("Symbol")
