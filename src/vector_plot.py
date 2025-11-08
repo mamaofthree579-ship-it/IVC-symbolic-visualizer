@@ -9,24 +9,27 @@ def render_3d_resonance_field(matrix, clusters=None):
     - matrix: pd.DataFrame, resonance matrix
     - clusters: list of sets of symbols (optional)
     """
+    if matrix is None or matrix.empty:
+        raise ValueError("Matrix is empty or not provided.")
+
     symbols = matrix.index.tolist()
     data = matrix.to_numpy()
 
-    # Dimensionality reduction for 3D visualization
+    # Reduce to 3D for plotting
     pca = PCA(n_components=3)
     coords = pca.fit_transform(data)
 
-    # Calculate energy (e.g., sum of resonance strengths for each symbol)
+    # Compute energy
     energies = matrix.sum(axis=1).to_numpy()
     energy_scaled = (energies - energies.min()) / (energies.max() - energies.min() + 1e-9)
 
-    # Assign each cluster a unique color
+    # Assign cluster colors
     color_map = {}
+    palette = [
+        "#FF6B6B", "#FFD93D", "#6BCB77", "#4D96FF", "#E15FED",
+        "#F8961E", "#00B4D8", "#9B5DE5", "#F15BB5", "#FF9F1C"
+    ]
     if clusters:
-        palette = [
-            "#FF6B6B", "#FFD93D", "#6BCB77", "#4D96FF", "#E15FED",
-            "#F8961E", "#00B4D8", "#9B5DE5", "#F15BB5", "#FF9F1C"
-        ]
         for i, cluster in enumerate(clusters):
             for symbol in cluster:
                 color_map[symbol] = palette[i % len(palette)]
@@ -34,7 +37,7 @@ def render_3d_resonance_field(matrix, clusters=None):
         for symbol in symbols:
             color_map[symbol] = "#6BCB77"
 
-    # Prepare scatter plot
+    # 3D scatter for symbols
     scatter = go.Scatter3d(
         x=coords[:, 0],
         y=coords[:, 1],
@@ -51,9 +54,10 @@ def render_3d_resonance_field(matrix, clusters=None):
         hovertemplate="<b>%{text}</b><br>Energy: %{marker.size:.2f}<extra></extra>"
     )
 
+    # Start figure
     fig = go.Figure(data=[scatter])
 
-    # Add cluster connections (optional lines between highly resonant pairs)
+    # Draw lines between resonant pairs in same cluster
     if clusters:
         for cluster in clusters:
             indices = [symbols.index(s) for s in cluster if s in symbols]
@@ -71,15 +75,18 @@ def render_3d_resonance_field(matrix, clusters=None):
                         showlegend=False
                     ))
 
+    # Layout
     fig.update_layout(
         scene=dict(
             xaxis_title="Component 1",
             yaxis_title="Component 2",
-            zaxis_title="Component 3"
+            zaxis_title="Component 3",
         ),
         title="3D Symbolic Resonance Field",
         margin=dict(l=0, r=0, b=0, t=50),
-        showlegend=False
+        showlegend=False,
+        template="plotly_dark"
     )
 
+    # ✅ Ensure a figure object is always returned
     return fig
