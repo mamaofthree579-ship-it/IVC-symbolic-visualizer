@@ -22,6 +22,9 @@ st.title("🌐 IVC Symbolic Energy Visualizer")
 # --- Sidebar Controls ---
 st.sidebar.header("⚙️ Visualization Options")
 
+# Data size selector
+n_symbols = st.sidebar.slider("Number of Symbols", 4, 20, 7)
+show_data = st.sidebar.checkbox("Show Data Tables", value=True)
 visual_choice = st.sidebar.multiselect(
     "Select Visualization(s) to Display",
     [
