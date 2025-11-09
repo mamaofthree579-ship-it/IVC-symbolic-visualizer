@@ -69,3 +69,68 @@ def render_frequency_spectrum(df):
         title="Symbolic Energy Spectrum"
     )
     return fig
+
+def render_symbolic_network(matrix, threshold=0.6):
+    """
+    Create an interactive 3D force-directed symbolic network.
+    Nodes = symbols, Edges = resonance strength above threshold.
+    """
+    symbols = list(matrix.columns)
+    G = nx.Graph()
+
+    # Add nodes and edges based on resonance strength
+    for i in range(len(symbols)):
+        G.add_node(symbols[i])
+        for j in range(i + 1, len(symbols)):
+            weight = matrix.iloc[i, j]
+            if weight >= threshold:
+                G.add_edge(symbols[i], symbols[j], weight=weight)
+
+    # Layout
+    pos = nx.spring_layout(G, dim=3, seed=42)
+    x_nodes, y_nodes, z_nodes = [], [], []
+    for node in G.nodes():
+        x, y, z = pos[node]
+        x_nodes.append(x)
+        y_nodes.append(y)
+        z_nodes.append(z)
+
+    # Edge coordinates
+    edge_x, edge_y, edge_z = [], [], []
+    for edge in G.edges():
+        x0, y0, z0 = pos[edge[0]]
+        x1, y1, z1 = pos[edge[1]]
+        edge_x += [x0, x1, None]
+        edge_y += [y0, y1, None]
+        edge_z += [z0, z1, None]
+
+    # Edge trace
+    edge_trace = go.Scatter3d(
+        x=edge_x, y=edge_y, z=edge_z,
+        line=dict(width=1, color="lightblue"),
+        hoverinfo="none",
+        mode="lines"
+    )
+
+    # Node trace
+    node_trace = go.Scatter3d(
+        x=x_nodes, y=y_nodes, z=z_nodes,
+        mode="markers+text",
+        marker=dict(size=8, color="gold", opacity=0.8),
+        text=[f"{node}" for node in G.nodes()],
+        textposition="top center",
+        hoverinfo="text"
+    )
+
+    fig = go.Figure(data=[edge_trace, node_trace])
+    fig.update_layout(
+        title="🌐 Symbolic Network Connectivity Map",
+        showlegend=False,
+        scene=dict(
+            xaxis=dict(visible=False),
+            yaxis=dict(visible=False),
+            zaxis=dict(visible=False)
+        ),
+        margin=dict(l=0, r=0, b=0, t=40),
+    )
+    return fig
