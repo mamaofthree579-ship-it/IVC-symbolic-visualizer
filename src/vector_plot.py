@@ -3,167 +3,146 @@ import plotly.graph_objects as go
 from sklearn.decomposition import PCA
 
 # ------------------------------------------------------------------------------
-# Utility: Generate consistent 3D coordinates from resonance data
-# ------------------------------------------------------------------------------
-def _get_3d_coords(matrix):
-    """Reduce resonance matrix into 3D coordinates using PCA."""
-    try:
-        pca = PCA(n_components=3)
-        coords = pca.fit_transform(matrix)
-        return coords
-    except Exception:
-        # Fallback if PCA fails
-        n = matrix.shape[0]
-        return np.random.rand(n, 3)
-
-
-# ------------------------------------------------------------------------------
 # 3D Resonance Field Visualization
 # ------------------------------------------------------------------------------
 def render_3d_resonance_field(matrix, clusters):
-    """Render a 3D field showing symbol resonance and clustering."""
-    if matrix is None or matrix.empty:
-        raise ValueError("Matrix is empty or None.")
-
-    labels = matrix.index.tolist()
-    coords = _get_3d_coords(matrix.values)
+    """Render 3D symbolic resonance field based on matrix similarity."""
+    pca = PCA(n_components=3)
+    coords = pca.fit_transform(matrix.values)
+    symbols = matrix.index.tolist()
 
     fig = go.Figure()
 
-    # Assign a unique color per cluster
-    if clusters is None or len(clusters) == 0:
-        clusters = [{label} for label in labels]
-
-    colors = [
-        f"hsl({int(360 * i / len(clusters))},70%,60%)"
-        for i in range(len(clusters))
-    ]
-
-    for i, cluster in enumerate(clusters):
-        idxs = [labels.index(label) for label in cluster if label in labels]
-        x, y, z = coords[idxs, 0], coords[idxs, 1], coords[idxs, 2]
-
-        fig.add_trace(
-            go.Scatter3d(
-                x=x,
-                y=y,
-                z=z,
-                mode="markers+text",
-                text=[labels[k] for k in idxs],
-                marker=dict(size=8, color=colors[i], opacity=0.8),
-                name=f"Cluster {i+1}",
-            )
-        )
+    # Plot each cluster
+    if clusters:
+        for cluster in clusters:
+            cluster_indices = [symbols.index(s) for s in cluster if s in symbols]
+            cluster_coords = coords[cluster_indices]
+            fig.add_trace(go.Scatter3d(
+                x=cluster_coords[:, 0],
+                y=cluster_coords[:, 1],
+                z=cluster_coords[:, 2],
+                mode='markers',
+                marker=dict(size=6, color=np.random.rand(), opacity=0.8),
+                name=f"Cluster {list(cluster)[0]}"
+            ))
+    else:
+        # fallback single group
+        fig.add_trace(go.Scatter3d(
+            x=coords[:, 0], y=coords[:, 1], z=coords[:, 2],
+            mode="markers",
+            marker=dict(size=6, color='blue', opacity=0.7),
+            name="Resonance Field"
+        ))
 
     fig.update_layout(
-        title="3D Resonance Field of Symbolic Network",
+        title="3D Resonance Matrix Field",
         scene=dict(
-            xaxis_title="Dimension 1",
-            yaxis_title="Dimension 2",
-            zaxis_title="Dimension 3",
+            xaxis_title="X",
+            yaxis_title="Y",
+            zaxis_title="Z"
         ),
-        margin=dict(l=0, r=0, t=40, b=0),
-        showlegend=True,
+        height=600
     )
     return fig
 
 
 # ------------------------------------------------------------------------------
-# Energy Flow Field Visualization
+# Symbolic Network Visualization
 # ------------------------------------------------------------------------------
-def render_energy_flow_field(data, flow_vectors):
-    """Visualize energy vectors as arrows in 3D space."""
-    if data is None or flow_vectors is None:
-        raise ValueError("Data or flow vectors not provided.")
+def render_symbolic_network(matrix):
+    """Simple network graph of symbolic connections based on resonance."""
+    import networkx as nx
+    G = nx.Graph()
+    symbols = matrix.index.tolist()
 
-    labels = data.index.tolist() if isinstance(data, np.ndarray) is False else [
-        f"Symbol_{i}" for i in range(data.shape[0])
-    ]
+    for i, s1 in enumerate(symbols):
+        for j, s2 in enumerate(symbols):
+            if i < j and matrix.iloc[i, j] > 0.7:
+                G.add_edge(s1, s2, weight=matrix.iloc[i, j])
 
-    n = len(labels)
-    coords = np.random.rand(n, 3)
+    pos = nx.spring_layout(G, seed=42)
+    x, y = zip(*[pos[k] for k in G.nodes])
 
     fig = go.Figure()
+    # Nodes
+    fig.add_trace(go.Scatter(
+        x=x, y=y, mode="markers+text", text=list(G.nodes),
+        textposition="top center", marker=dict(size=12, color="skyblue")
+    ))
+    # Edges
+    for edge in G.edges():
+        x0, y0 = pos[edge[0]]
+        x1, y1 = pos[edge[1]]
+        fig.add_trace(go.Scatter(
+            x=[x0, x1, None], y=[y0, y1, None],
+            mode="lines", line=dict(width=2, color="gray"), hoverinfo="none"
+        ))
 
-    for i in range(n):
-        x, y, z = coords[i]
-        u, v, w = flow_vectors[i]
-
-        fig.add_trace(
-            go.Cone(
-                x=[x],
-                y=[y],
-                z=[z],
-                u=[u],
-                v=[v],
-                w=[w],
-                colorscale="Viridis",
-                sizemode="absolute",
-                sizeref=0.4,
-                anchor="tail",
-                showscale=False,
-            )
-        )
-
-    fig.add_trace(
-        go.Scatter3d(
-            x=coords[:, 0],
-            y=coords[:, 1],
-            z=coords[:, 2],
-            text=labels,
-            mode="markers+text",
-            marker=dict(size=6, color="orange", opacity=0.8),
-            name="Symbols",
-        )
-    )
-
-    fig.update_layout(
-        title="Symbolic Energy Flow Field",
-        scene=dict(
-            xaxis_title="Energy X",
-            yaxis_title="Energy Y",
-            zaxis_title="Energy Z",
-        ),
-        margin=dict(l=0, r=0, t=40, b=0),
-        showlegend=False,
-    )
+    fig.update_layout(title="Symbolic Resonance Network", showlegend=False)
     return fig
 
 
 # ------------------------------------------------------------------------------
-# Frequency Spectrum Visualization
+# 3D Energy Flow Field
 # ------------------------------------------------------------------------------
-def render_frequency_spectrum(symbol_energy):
-    """Render a 3D frequency field or symbolic spectrum."""
-    if symbol_energy is None or len(symbol_energy) == 0:
-        raise ValueError("Symbol energy data not provided.")
+def render_energy_flow_field(df, flow_vectors):
+    """Render 3D vector field showing symbolic energy flow."""
+    pca = PCA(n_components=3)
+    coords = pca.fit_transform(df.values)
+    X, Y, Z = coords[:, 0], coords[:, 1], coords[:, 2]
 
-    symbols = list(symbol_energy.keys())
-    values = np.array(list(symbol_energy.values()))
+    U, V, W = flow_vectors[:, 0], flow_vectors[:, 1], flow_vectors[:, 2]
 
     fig = go.Figure(
-        data=[
-            go.Bar3d(
-                x=list(range(len(symbols))),
-                y=[0] * len(symbols),
-                z=[0] * len(symbols),
-                dx=[0.5] * len(symbols),
-                dy=[0.5] * len(symbols),
-                dz=values,
-                text=symbols,
-                hovertext=[f"{s}: {v:.2f}" for s, v in zip(symbols, values)],
-                hoverinfo="text",
-            )
-        ]
+        data=go.Cone(
+            x=X, y=Y, z=Z, u=U, v=V, w=W,
+            colorscale="Viridis", sizemode="absolute", sizeref=2,
+            showscale=True
+        )
     )
+    fig.update_layout(title="Symbolic Energy Flow Field", height=600)
+    return fig
+
+
+# ------------------------------------------------------------------------------
+# Frequency Spectrum Visualization (FIXED)
+# ------------------------------------------------------------------------------
+def render_frequency_spectrum(energy_map):
+    """Render a 3D frequency-like spectrum of symbol energy values."""
+    if not isinstance(energy_map, dict):
+        raise ValueError("energy_map must be a dictionary")
+
+    symbols = list(energy_map.keys())
+    energies = np.array(list(energy_map.values()))
+    num_symbols = len(symbols)
+
+    # Generate pseudo-frequency and amplitude
+    freqs = np.linspace(0.1, 2.0, num_symbols)
+    amplitudes = energies / energies.max() * 10.0
+    z = amplitudes * np.sin(freqs * np.pi)
+
+    fig = go.Figure()
+
+    # Each bar represented as a vertical line
+    for i, sym in enumerate(symbols):
+        fig.add_trace(go.Scatter3d(
+            x=[freqs[i], freqs[i]],
+            y=[0, energies[i]],
+            z=[0, z[i]],
+            mode="lines+markers",
+            line=dict(width=8, color="orange"),
+            marker=dict(size=4, color="red"),
+            name=sym
+        ))
 
     fig.update_layout(
-        title="Symbolic Frequency Spectrum",
+        title="3D Symbolic Frequency Spectrum",
         scene=dict(
-            xaxis=dict(title="Symbol Index"),
-            yaxis=dict(title="Baseline"),
-            zaxis=dict(title="Frequency / Energy"),
+            xaxis_title="Symbol Frequency",
+            yaxis_title="Amplitude (Energy)",
+            zaxis_title="Resonance Phase"
         ),
-        margin=dict(l=0, r=0, t=40, b=0),
+        height=600
     )
     return fig
