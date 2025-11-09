@@ -67,3 +67,20 @@ def compute_symbol_energy(df):
     matrix = compute_resonance_matrix(df)
     energy = matrix.sum(axis=1)
     return pd.DataFrame({"Symbol": matrix.index, "Energy": energy})
+
+def compute_energy_flow(df):
+    """
+    Compute directional energy flow between symbols based on resonance differences.
+    Returns a list of energy vectors (source, target, magnitude).
+    """
+    matrix = compute_resonance_matrix(df)
+    flow_vectors = []
+
+    for i, source in enumerate(matrix.index):
+        for j, target in enumerate(matrix.columns):
+            if i != j:
+                magnitude = matrix.iloc[i, j] - matrix.iloc[j, i]
+                if abs(magnitude) > 0.05:  # only meaningful flows
+                    flow_vectors.append((source, target, magnitude))
+
+    return flow_vectors
