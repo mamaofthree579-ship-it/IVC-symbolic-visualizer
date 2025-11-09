@@ -8,13 +8,11 @@ from modules.analytics import (
     compute_symbol_energy,
     compute_energy_flow
 )
-
 from src.vector_plot import (
     render_3d_resonance_field,
     render_energy_flow_field,
     render_frequency_spectrum
 )
-
 
 st.set_page_config(page_title="IVC Symbolic Visualizer", layout="wide")
 st.title("IVC Symbolic Energy Visualizer")
