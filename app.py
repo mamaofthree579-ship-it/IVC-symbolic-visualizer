@@ -93,6 +93,10 @@ with tab3:
     # Compute energy density for display
     densities = compute_energy_density(st.session_state.energy_matrix)
     stabilized = detect_energy_stabilization(st.session_state.history)
+from modules.analytics import find_resonant_clusters
+
+clusters = find_resonant_clusters(resonance_matrix)
+fig = render_3d_resonance_field(resonance_matrix, clusters)
 
     st.write(f"**Stabilization detected:** {'✅ Yes' if stabilized else '⏳ Not yet'}")
 
