@@ -1,5 +1,6 @@
 import streamlit as st
 import numpy as np
+import time
 from modules.analytics import (
     generate_sample_data,
     compute_resonance_matrix,
@@ -23,13 +24,12 @@ matrix = compute_resonance_matrix(data)
 clusters = find_resonant_clusters(matrix)
 flow_vectors = compute_energy_flow(data)
 
-# --- Session State for Animation ---
+# --- Session State ---
 if "is_playing" not in st.session_state:
     st.session_state.is_playing = {"resonance": False, "flow": False, "network": False}
 if "step" not in st.session_state:
     st.session_state.step = 0
 
-# --- Control Functions ---
 def toggle_play(chart_name):
     st.session_state.is_playing[chart_name] = not st.session_state.is_playing[chart_name]
 
@@ -37,6 +37,14 @@ def increment_step():
     st.session_state.step += 1
     return st.session_state.step
 
+def auto_loop(chart_name, limit=30, delay=0.3):
+    """Automatically advance frames until paused or limit reached."""
+    for _ in range(limit):
+        if not st.session_state.is_playing.get(chart_name):
+            break
+        st.session_state.step += 1
+        time.sleep(delay)
+        st.experimental_rerun()
 
 # --- Layout ---
 tab1, tab2, tab3 = st.tabs(["3D Resonance Field", "Energy Flow", "Symbolic Network"])
@@ -44,53 +52,39 @@ tab1, tab2, tab3 = st.tabs(["3D Resonance Field", "Energy Flow", "Symbolic Netwo
 # --- Resonance Field ---
 with tab1:
     st.subheader("Resonance Field Animation")
-    col1, col2 = st.columns([1, 3])
-    with col1:
-        if st.button(
-            "▶️ Play" if not st.session_state.is_playing["resonance"] else "⏸ Pause",
-            key="resonance_btn",
-        ):
-            toggle_play("resonance")
+    if st.button("▶️ Play" if not st.session_state.is_playing["resonance"] else "⏸ Pause", key="res_btn"):
+        toggle_play("resonance")
+        if st.session_state.is_playing["resonance"]:
+            auto_loop("resonance")
 
-    with col2:
-        current_step = increment_step() if st.session_state.is_playing["resonance"] else st.session_state.step
-        evolved_matrix = evolve_matrix_step(matrix, current_step)
-        fig_resonance = render_3d_resonance_field(evolved_matrix, clusters)
-        st.plotly_chart(fig_resonance, use_container_width=True, key=f"resonance_chart_{current_step}")
+    step = st.session_state.step
+    evolved = evolve_matrix_step(matrix, step)
+    fig_res = render_3d_resonance_field(evolved, clusters)
+    st.plotly_chart(fig_res, use_container_width=True, key=f"resonance_{step}")
 
 # --- Energy Flow Field ---
 with tab2:
     st.subheader("Energy Flow Field Animation")
-    col1, col2 = st.columns([1, 3])
-    with col1:
-        if st.button(
-            "▶️ Play" if not st.session_state.is_playing["flow"] else "⏸ Pause",
-            key="flow_btn",
-        ):
-            toggle_play("flow")
+    if st.button("▶️ Play" if not st.session_state.is_playing["flow"] else "⏸ Pause", key="flow_btn"):
+        toggle_play("flow")
+        if st.session_state.is_playing["flow"]:
+            auto_loop("flow")
 
-    with col2:
-        current_step = increment_step() if st.session_state.is_playing["flow"] else st.session_state.step
-        evolved_matrix = evolve_matrix_step(matrix, current_step)
-        flow_vectors = compute_energy_flow(evolved_matrix)
-        fig_flow = render_energy_flow_field(evolved_matrix, flow_vectors)
-        st.plotly_chart(fig_flow, use_container_width=True, key=f"flow_chart_{current_step}")
+    step = st.session_state.step
+    evolved = evolve_matrix_step(matrix, step)
+    flow = compute_energy_flow(evolved)
+    fig_flow = render_energy_flow_field(evolved, flow)
+    st.plotly_chart(fig_flow, use_container_width=True, key=f"flow_{step}")
 
 # --- Symbolic Network ---
 with tab3:
     st.subheader("Symbolic Network Dynamics")
-    col1, col2 = st.columns([1, 3])
-    with col1:
-        if st.button(
-            "▶️ Play" if not st.session_state.is_playing["network"] else "⏸ Pause",
-            key="network_btn",
-        ):
-            toggle_play("network")
+    if st.button("▶️ Play" if not st.session_state.is_playing["network"] else "⏸ Pause", key="net_btn"):
+        toggle_play("network")
+        if st.session_state.is_playing["network"]:
+            auto_loop("network")
 
-    with col2:
-        current_step = increment_step() if st.session_state.is_playing["network"] else st.session_state.step
-        evolved_matrix = evolve_matrix_step(matrix, current_step)
-        fig_network = render_symbolic_network(evolved_matrix)
-        st.plotly_chart(fig_network, use_container_width=True, key=f"network_chart_{current_step}")
-
-st.info("Use the Play/Pause buttons above to animate each chart independently.")
+    step = st.session_state.step
+    evolved = evolve_matrix_step(matrix, step)
+    fig_net = render_symbolic_network(evolved)
+    st.plotly_chart(fig_net, use_container_width=True, key=f"network_{step}")
