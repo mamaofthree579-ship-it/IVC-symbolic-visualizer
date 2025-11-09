@@ -74,19 +74,44 @@ def render_symbolic_network(matrix, threshold=0.6):
     """
     Create an interactive 3D force-directed symbolic network.
     Nodes = symbols, Edges = resonance strength above threshold.
+    Auto-adjusts if network would be empty.
     """
+    if matrix is None or matrix.empty:
+        return go.Figure()
+
     symbols = list(matrix.columns)
     G = nx.Graph()
 
     # Add nodes and edges based on resonance strength
+    edge_count = 0
     for i in range(len(symbols)):
         G.add_node(symbols[i])
         for j in range(i + 1, len(symbols)):
-            weight = matrix.iloc[i, j]
+            try:
+                weight = float(matrix.iloc[i, j])
+            except:
+                continue
             if weight >= threshold:
                 G.add_edge(symbols[i], symbols[j], weight=weight)
+                edge_count += 1
 
-    # Layout
+    # If no edges, lower the threshold gradually
+    if edge_count == 0:
+        for new_thresh in [0.5, 0.4, 0.3, 0.2]:
+            for i in range(len(symbols)):
+                for j in range(i + 1, len(symbols)):
+                    weight = float(matrix.iloc[i, j])
+                    if weight >= new_thresh:
+                        G.add_edge(symbols[i], symbols[j], weight=weight)
+                        edge_count += 1
+            if edge_count > 0:
+                threshold = new_thresh
+                break
+
+    # If STILL empty, return placeholder layout
+    if edge_count == 0:
+        G.add_edges_from([(symbols[i], symbols[(i+1) % len(symbols)]) for i in range(len(symbols))])
+
     pos = nx.spring_layout(G, dim=3, seed=42)
     x_nodes, y_nodes, z_nodes = [], [], []
     for node in G.nodes():
@@ -95,28 +120,32 @@ def render_symbolic_network(matrix, threshold=0.6):
         y_nodes.append(y)
         z_nodes.append(z)
 
-    # Edge coordinates
-    edge_x, edge_y, edge_z = [], [], []
-    for edge in G.edges():
+    edge_x, edge_y, edge_z, edge_colors = [], [], [], []
+    for edge in G.edges(data=True):
         x0, y0, z0 = pos[edge[0]]
         x1, y1, z1 = pos[edge[1]]
         edge_x += [x0, x1, None]
         edge_y += [y0, y1, None]
         edge_z += [z0, z1, None]
+        w = edge[2].get("weight", 0.5)
+        edge_colors.append(w)
 
-    # Edge trace
     edge_trace = go.Scatter3d(
         x=edge_x, y=edge_y, z=edge_z,
-        line=dict(width=1, color="lightblue"),
+        line=dict(width=2, color="lightblue"),
         hoverinfo="none",
         mode="lines"
     )
 
-    # Node trace
     node_trace = go.Scatter3d(
         x=x_nodes, y=y_nodes, z=z_nodes,
         mode="markers+text",
-        marker=dict(size=8, color="gold", opacity=0.8),
+        marker=dict(
+            size=8,
+            color=np.linspace(0, 1, len(x_nodes)),
+            colorscale="Viridis",
+            opacity=0.9
+        ),
         text=[f"{node}" for node in G.nodes()],
         textposition="top center",
         hoverinfo="text"
@@ -124,7 +153,7 @@ def render_symbolic_network(matrix, threshold=0.6):
 
     fig = go.Figure(data=[edge_trace, node_trace])
     fig.update_layout(
-        title="🌐 Symbolic Network Connectivity Map",
+        title=f"🌐 Symbolic Network Connectivity (threshold={threshold})",
         showlegend=False,
         scene=dict(
             xaxis=dict(visible=False),
@@ -132,5 +161,7 @@ def render_symbolic_network(matrix, threshold=0.6):
             zaxis=dict(visible=False)
         ),
         margin=dict(l=0, r=0, b=0, t=40),
+        paper_bgcolor="black",
+        font=dict(color="white")
     )
     return fig
