@@ -42,7 +42,56 @@ def render_3d_resonance_field(matrix, clusters):
 
     return go.Figure(data=[scatter], layout=layout)
 
+def render_energy_flow_field(df, flow_vectors):
+    """
+    Render a 3D dynamic energy flow visualization.
+    Nodes are symbols; lines represent directional energy flow.
+    """
+    pca = PCA(n_components=3)
+    coords = pca.fit_transform(df.values)
+    symbol_positions = {sym: coords[i] for i, sym in enumerate(df.index)}
 
+    edge_x, edge_y, edge_z, flow_colors = [], [], [], []
+
+    for (source, target, mag) in flow_vectors:
+        x0, y0, z0 = symbol_positions[source]
+        x1, y1, z1 = symbol_positions[target]
+        edge_x += [x0, x1, None]
+        edge_y += [y0, y1, None]
+        edge_z += [z0, z1, None]
+        flow_colors.append(abs(mag))
+
+    node_x, node_y, node_z = coords[:, 0], coords[:, 1], coords[:, 2]
+
+    edge_trace = go.Scatter3d(
+        x=edge_x, y=edge_y, z=edge_z,
+        mode='lines',
+        line=dict(width=3, color=flow_colors, colorscale='Plasma'),
+        opacity=0.8
+    )
+
+    node_trace = go.Scatter3d(
+        x=node_x, y=node_y, z=node_z,
+        mode='markers+text',
+        text=df.index,
+        marker=dict(size=10, color='white', opacity=0.9),
+        textposition="top center"
+    )
+
+    fig = go.Figure(data=[edge_trace, node_trace])
+    fig.update_layout(
+        title="3D Symbolic Energy Flow Field",
+        scene=dict(
+            xaxis_title="Resonance X",
+            yaxis_title="Resonance Y",
+            zaxis_title="Resonance Z",
+        ),
+        showlegend=False,
+        height=800
+    )
+
+    return fig
+    
 def render_energy_flow_field(df, flow_vectors):
     """
     Render a 3D energy flow field visualization for symbolic energy dynamics.
