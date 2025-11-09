@@ -98,11 +98,11 @@ from modules.analytics import find_resonant_clusters
 clusters = find_resonant_clusters(resonance_matrix)
 fig = render_3d_resonance_field(resonance_matrix, clusters)
 
-    st.write(f"**Stabilization detected:** {'✅ Yes' if stabilized else '⏳ Not yet'}")
+        st.write(f"**Stabilization detected:** {'✅ Yes' if stabilized else '⏳ Not yet'}")
 
-    st.subheader("Energy Density by Symbol")
-    st.bar_chart(densities)
+        st.subheader("Energy Density by Symbol")
+        st.bar_chart(densities)
 
-    st.subheader("Evolving Resonance Field (3D)")
+        st.subheader("Evolving Resonance Field (3D)")
     fig_field = render_energy_flow_field(df, st.session_state.energy_matrix)
-    st.plotly_chart(fig_field, use_container_width=True)
+        st.plotly_chart(fig_field, use_container_width=True)
