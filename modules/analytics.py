@@ -1,112 +1,106 @@
-# modules/analytics.py
 import numpy as np
 import pandas as pd
 
-def generate_sample_data(n=6):
-    """Generate a reproducible sample symbolic data matrix (n x n)."""
+# ------------------------------------------------------------------------------
+# Generate Sample Data
+# ------------------------------------------------------------------------------
+def generate_sample_data(n=5):
+    """Generate symbolic test data with pseudo-random energetic correlations."""
     np.random.seed(42)
     symbols = [f"Symbol_{i}" for i in range(n)]
-    values = np.random.rand(n, n) * 1.0
-    df = pd.DataFrame(values, index=symbols, columns=symbols)
+    values = np.random.rand(n, n)
+    df = pd.DataFrame(values, columns=symbols, index=symbols)
     return df
 
 
+# ------------------------------------------------------------------------------
+# Resonance Matrix Calculation
+# ------------------------------------------------------------------------------
 def compute_resonance_matrix(df):
     """
-    Compute a symmetric resonance matrix from a DataFrame.
-    Uses row-wise cosine-like normalization to compute pairwise similarity.
-    Returns a pandas DataFrame (NxN) with same index/columns as input.
+    Compute a resonance matrix showing symbolic interaction strength.
+    Uses cosine similarity between symbolic vectors.
     """
-    mat = df.to_numpy(dtype=float)
-    norms = np.linalg.norm(mat, axis=1, keepdims=True)
-    norms[norms == 0] = 1.0
-    normalized = mat / norms
+    data = df.to_numpy()
+    norm = np.linalg.norm(data, axis=1, keepdims=True)
+    normalized = data / (norm + 1e-9)
     resonance = np.dot(normalized, normalized.T)
-    symbols = list(df.index)
-    return pd.DataFrame(resonance, index=symbols, columns=symbols)
+    return pd.DataFrame(resonance, index=df.index, columns=df.columns)
 
 
+# ------------------------------------------------------------------------------
+# Cluster Detection
+# ------------------------------------------------------------------------------
 def find_resonant_clusters(matrix, threshold=0.8):
     """
-    Simple threshold-based cluster finder: groups indices that share strong pairwise resonance.
-    Returns list of sets (symbol names).
+    Identify clusters of symbols that resonate above a threshold.
+    Returns a list of symbolic sets (clusters).
     """
-    if isinstance(matrix, pd.DataFrame):
-        labels = list(matrix.index)
-        M = matrix.to_numpy()
-    else:
-        raise ValueError("matrix must be a pandas DataFrame")
-
-    n = M.shape[0]
-    visited = set()
     clusters = []
+    n = matrix.shape[0]
+    visited = set()
 
     for i in range(n):
         if i in visited:
             continue
-        group = {i}
+        cluster = {i}
         for j in range(n):
-            if i != j and M[i, j] >= threshold:
-                group.add(j)
-        visited |= group
-        clusters.append({labels[k] for k in sorted(group)})
+            if i != j and matrix.iloc[i, j] >= threshold:
+                cluster.add(j)
+        visited |= cluster
+        clusters.append({matrix.index[k] for k in cluster})
     return clusters
 
 
-def compute_symbol_energy(df):
+# ------------------------------------------------------------------------------
+# Symbolic Energy Mapping
+# ------------------------------------------------------------------------------
+def compute_symbol_energy(matrix):
     """
-    Aggregate energy per symbol - here the mean resonance magnitude across its row.
-    Accepts DataFrame (square) and returns a numpy array (length n).
+    Compute symbolic 'energy' for each symbol.
+    Uses sum of resonance strengths as an energy proxy.
+    Returns a dictionary for visual mapping.
     """
-    if isinstance(df, pd.DataFrame):
-        m = df.to_numpy()
-    else:
-        m = np.asarray(df)
-    energy = np.nanmean(m, axis=1)
-    return energy
+    energies = matrix.sum(axis=1).to_numpy()
+    symbols = matrix.index.tolist()
+    energy_map = {symbols[i]: float(energies[i]) for i in range(len(symbols))}
+    return energy_map
 
 
+# ------------------------------------------------------------------------------
+# Energy Flow Field (Vector Field)
+# ------------------------------------------------------------------------------
 def compute_energy_flow(df):
     """
-    Compute a simple per-symbol flow vector based on gradients of the data.
-    Returns an (n,3) numpy array where each row is (u,v,w) vector for that symbol.
+    Compute directional symbolic energy flow between symbols.
+    Each vector represents the differential energy interaction.
     """
-    if isinstance(df, pd.DataFrame):
-        arr = df.to_numpy()
-    else:
-        arr = np.asarray(df, dtype=float)
+    data = df.to_numpy()
+    grad_x = np.gradient(data, axis=0)
+    grad_y = np.gradient(data, axis=1)
+    grad_z = grad_x + grad_y  # symbolic “cross-field” flow
 
-    # Use gradients in 2D + a small z component from row differences
-    gx = np.gradient(arr, axis=1).mean(axis=1)
-    gy = np.gradient(arr, axis=0).mean(axis=1)
-    gz = np.gradient(gx + gy)
-    vectors = np.vstack([gx, gy, gz]).T
-
-    # normalize per-row
-    norms = np.linalg.norm(vectors, axis=1, keepdims=True)
-    norms[norms == 0] = 1.0
-    vectors = vectors / norms
-    return vectors
+    # Flattened field
+    flow_vectors = np.mean(
+        np.stack([grad_x.flatten(), grad_y.flatten(), grad_z.flatten()], axis=1),
+        axis=0
+    )
+    # Expand to match number of symbols
+    n = df.shape[0]
+    flow_vectors = np.tile(flow_vectors, (n, 1))
+    return flow_vectors
 
 
-def evolve_matrix_step(base_matrix, step_index, amplitude=0.1):
+# ------------------------------------------------------------------------------
+# Evolving Resonance (for Animation)
+# ------------------------------------------------------------------------------
+def evolve_matrix_step(matrix, t=0.05):
     """
-    Create a gentle evolution of the base resonance matrix for animation.
-    Adds a small oscillatory perturbation that preserves symmetry.
+    Simulate an iterative transformation of the resonance matrix over time.
+    Adds oscillatory modulation to reflect dynamic symbol resonance.
     """
-    if not isinstance(base_matrix, pd.DataFrame):
-        raise ValueError("base_matrix must be a pandas DataFrame")
-
-    n = base_matrix.shape[0]
-    rng = np.random.default_rng(100 + (step_index % 1000))
-    phase = np.sin(2.0 * np.pi * (step_index / 10.0))
-    perturb = amplitude * phase * rng.standard_normal((n, n))
-
-    # Make symmetric so resonance stays balanced
-    perturb = (perturb + perturb.T) * 0.5
-
-    mat = base_matrix.to_numpy() + perturb
-    # Clip to [0,1] for visualization stability
-    mat = np.clip(mat, 0.0, 1.0)
-
-    return pd.DataFrame(mat, index=base_matrix.index, columns=base_matrix.columns)
+    M = matrix.to_numpy()
+    noise = np.sin(np.linspace(0, np.pi * 2, M.shape[0]))[:, None]
+    evolution = M + t * (np.dot(M, M.T) * noise)
+    evolution = np.clip(evolution, 0, 1)
+    return pd.DataFrame(evolution, index=matrix.index, columns=matrix.columns)
