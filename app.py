@@ -1,107 +1,104 @@
 import streamlit as st
+import pandas as pd
 import numpy as np
-import time
-from modules.analytics import (
-    generate_sample_data,
+
+# --- IVC Modules ---
+from src.data_loader import load_symbol_dataset, generate_synthetic_symbols
+from src.energy_embedding import (
+    normalize_features,
+    compute_energy_vectors,
     compute_resonance_matrix,
-    find_resonant_clusters,
-    compute_energy_flow,
-    evolve_matrix_step,
 )
-from src.vector_plot import (
-    render_3d_resonance_field,
-    render_energy_flow_field,
-    render_symbolic_network,
+from modules.energy_core import (
+    evolve_energy_step,
+    compute_energy_density,
+    detect_energy_stabilization,
 )
+from src.ui_controls import play_pause_controls
+from src.vector_plot import render_3d_resonance_field, render_energy_flow_field
 
-st.set_page_config(page_title="IVC Symbolic Visualizer", layout="wide")
-st.title("🌐 IVC Symbolic Energy Visualizer")
-
-# --- Initialize Data ---
-data = generate_sample_data(8)
-matrix = compute_resonance_matrix(data)
-clusters = find_resonant_clusters(matrix)
-
-# --- Session State ---
-if "is_playing" not in st.session_state:
-    st.session_state.is_playing = {"resonance": False, "flow": False, "network": False}
-if "frame" not in st.session_state:
-    st.session_state.frame = 0
-
-# --- Animation helper ---
-def toggle_play(chart):
-    st.session_state.is_playing[chart] = not st.session_state.is_playing[chart]
-    st.session_state.frame = 0
-
-
-def animate_chart(chart_name, render_func, *args):
-    """Animate chart locally for up to 30 frames."""
-    placeholder = st.empty()
-    for i in range(30):
-        if not st.session_state.is_playing[chart_name]:
-            break
-        evolved_matrix = evolve_matrix_step(matrix, i)
-        fig = render_func(evolved_matrix, *args)
-        placeholder.plotly_chart(fig, use_container_width=True, key=f"{chart_name}_{i}")
-        time.sleep(0.3)
-    st.session_state.is_playing[chart_name] = False
-
+# --- Streamlit Page Setup ---
+st.set_page_config(page_title="IVC Symbolic Energy Visualizer", layout="wide")
+st.title("🌐 IVC Symbolic Energy & Resonance Visualizer")
 
 # --- Tabs ---
-tab1, tab2, tab3 = st.tabs(["3D Resonance Field", "Energy Flow", "Symbolic Network"])
+tab1, tab2, tab3 = st.tabs(["🔹 Data & Preparation", "🔸 Energy Mapping", "🔻 Resonance Simulation"])
 
+# ---------------------------------------------------------------------
+# TAB 1: Load & Prepare Symbol Data
+# ---------------------------------------------------------------------
 with tab1:
-    st.subheader("3D Resonance Field")
-    play_button = st.button(
-        "▶️ Play" if not st.session_state.is_playing["resonance"] else "⏸ Pause",
-        key="play_resonance",
-    )
-    if play_button:
-        toggle_play("resonance")
+    st.header("🔹 Symbol Dataset Loader")
+    st.write("Upload or generate sample symbolic datasets for analysis.")
 
-    if st.session_state.is_playing["resonance"]:
-        animate_chart("resonance", render_3d_resonance_field, clusters)
+    data_option = st.radio("Choose Dataset Source:", ["Generate Sample", "Upload CSV"])
+
+    if data_option == "Generate Sample":
+        n = st.slider("Number of Symbols", 3, 20, 8)
+        df = generate_synthetic_symbols(n)
     else:
-        st.plotly_chart(
-            render_3d_resonance_field(matrix, clusters),
-            use_container_width=True,
-            key="resonance_static",
-        )
+        uploaded = st.file_uploader("Upload your CSV dataset", type=["csv", "tsv"])
+        if uploaded:
+            df = load_symbol_dataset(uploaded)
+        else:
+            st.warning("Please upload a dataset to continue.")
+            st.stop()
 
+    st.dataframe(df, use_container_width=True)
+
+    st.success("✅ Dataset loaded successfully.")
+
+# ---------------------------------------------------------------------
+# TAB 2: Energy Mapping and Visualization
+# ---------------------------------------------------------------------
 with tab2:
-    st.subheader("Energy Flow Field")
-    play_button = st.button(
-        "▶️ Play" if not st.session_state.is_playing["flow"] else "⏸ Pause",
-        key="play_flow",
-    )
-    if play_button:
-        toggle_play("flow")
+    st.header("🔸 Symbolic Energy Mapping")
+    st.write("Converts symbolic geometry into energetic representation fields.")
 
-    if st.session_state.is_playing["flow"]:
-        animate_chart("flow", render_energy_flow_field, compute_energy_flow(matrix))
-    else:
-        st.plotly_chart(
-            render_energy_flow_field(matrix, compute_energy_flow(matrix)),
-            use_container_width=True,
-            key="flow_static",
-        )
+    normalized_df = normalize_features(df)
+    energy_values = compute_energy_vectors(normalized_df)
+    resonance_matrix = compute_resonance_matrix(normalized_df)
 
+    df["energy"] = energy_values
+
+    st.subheader("Energy Table")
+    st.dataframe(df, use_container_width=True)
+
+    st.subheader("Energy Density Distribution")
+    st.bar_chart(df.set_index("symbol")["energy"])
+
+    st.subheader("Resonance Field (3D Visualization)")
+    fig = render_3d_resonance_field(resonance_matrix, None)
+    st.plotly_chart(fig, use_container_width=True)
+
+# ---------------------------------------------------------------------
+# TAB 3: Resonance Simulation (Dynamic)
+# ---------------------------------------------------------------------
 with tab3:
-    st.subheader("Symbolic Network")
-    play_button = st.button(
-        "▶️ Play" if not st.session_state.is_playing["network"] else "⏸ Pause",
-        key="play_network",
-    )
-    if play_button:
-        toggle_play("network")
+    st.header("🔻 Resonance Evolution Simulation")
+    st.write("Simulate how symbolic energies evolve and stabilize through resonance coupling.")
 
-    if st.session_state.is_playing["network"]:
-        animate_chart("network", render_symbolic_network)
-    else:
-        st.plotly_chart(
-            render_symbolic_network(matrix),
-            use_container_width=True,
-            key="network_static",
-        )
+    play, pause, reset = play_pause_controls("energy_sim")
 
-st.caption("Each chart auto-plays up to 30 frames and then stops automatically.")
+    # Initialize or store energy matrix in session state
+    if "energy_matrix" not in st.session_state or reset:
+        st.session_state.energy_matrix = resonance_matrix.copy()
+        st.session_state.history = [resonance_matrix.copy()]
+
+    if play:
+        new_matrix = evolve_energy_step(st.session_state.energy_matrix)
+        st.session_state.energy_matrix = new_matrix
+        st.session_state.history.append(new_matrix)
+
+    # Compute energy density for display
+    densities = compute_energy_density(st.session_state.energy_matrix)
+    stabilized = detect_energy_stabilization(st.session_state.history)
+
+    st.write(f"**Stabilization detected:** {'✅ Yes' if stabilized else '⏳ Not yet'}")
+
+    st.subheader("Energy Density by Symbol")
+    st.bar_chart(densities)
+
+    st.subheader("Evolving Resonance Field (3D)")
+    fig_field = render_energy_flow_field(df, st.session_state.energy_matrix)
+    st.plotly_chart(fig_field, use_container_width=True)
