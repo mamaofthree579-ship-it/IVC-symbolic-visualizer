@@ -2,107 +2,107 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 
-# --- IVC Modules ---
-from src.data_loader import load_symbol_dataset, generate_synthetic_symbols
-from src.energy_embedding import (
-    normalize_features,
-    compute_energy_vectors,
+# Import analysis & visualization modules
+from modules.analytics import (
+    generate_sample_data,
     compute_resonance_matrix,
+    find_resonant_clusters,
+    compute_symbol_energy,
+    compute_energy_flow,
 )
-from modules.energy_core import (
-    evolve_energy_step,
-    compute_energy_density,
-    detect_energy_stabilization,
+from src.vector_plot import (
+    render_3d_resonance_field,
+    render_energy_flow_field,
+    render_frequency_spectrum,
 )
-from src.ui_controls import play_pause_controls
-from src.vector_plot import render_3d_resonance_field, render_energy_flow_field
 
-# --- Streamlit Page Setup ---
+# ------------------------------------------------------------------------------
+# Streamlit App Configuration
+# ------------------------------------------------------------------------------
 st.set_page_config(page_title="IVC Symbolic Energy Visualizer", layout="wide")
-st.title("🌐 IVC Symbolic Energy & Resonance Visualizer")
 
-# --- Tabs ---
-tab1, tab2, tab3 = st.tabs(["🔹 Data & Preparation", "🔸 Energy Mapping", "🔻 Resonance Simulation"])
+st.title("🌀 IVC Symbolic Energy Visualizer")
+st.markdown("""
+This tool helps researchers explore how **ancient symbolic systems** may encode
+energetic and relational data.  
+Each visualization is interactive and dynamically generated.
+""")
 
-# ---------------------------------------------------------------------
-# TAB 1: Load & Prepare Symbol Data
-# ---------------------------------------------------------------------
-with tab1:
-    st.header("🔹 Symbol Dataset Loader")
-    st.write("Upload or generate sample symbolic datasets for analysis.")
+# ------------------------------------------------------------------------------
+# Sidebar Controls
+# ------------------------------------------------------------------------------
+st.sidebar.header("Controls")
+num_symbols = st.sidebar.slider("Number of symbols", 3, 20, 8)
+energy_threshold = st.sidebar.slider("Resonance threshold", 0.5, 0.95, 0.8)
+show_energy_flow = st.sidebar.checkbox("Show Energy Flow Field", True)
+show_frequency_spectrum = st.sidebar.checkbox("Show Frequency Spectrum", True)
 
-    data_option = st.radio("Choose Dataset Source:", ["Generate Sample", "Upload CSV"])
+# ------------------------------------------------------------------------------
+# Data Generation and Core Computations
+# ------------------------------------------------------------------------------
+st.subheader("1️⃣ Generating Symbolic Data")
+data = generate_sample_data(num_symbols)
+st.dataframe(data, use_container_width=True)
 
-    if data_option == "Generate Sample":
-        n = st.slider("Number of Symbols", 3, 20, 8)
-        df = generate_synthetic_symbols(n)
-    else:
-        uploaded = st.file_uploader("Upload your CSV dataset", type=["csv", "tsv"])
-        if uploaded:
-            df = load_symbol_dataset(uploaded)
-        else:
-            st.warning("Please upload a dataset to continue.")
-            st.stop()
+st.subheader("2️⃣ Computing Resonance Matrix")
+resonance_matrix = compute_resonance_matrix(data)
+st.dataframe(resonance_matrix, use_container_width=True)
 
-    st.dataframe(df, use_container_width=True)
+# Compute symbolic clusters
+clusters = find_resonant_clusters(resonance_matrix, threshold=energy_threshold)
 
-    st.success("✅ Dataset loaded successfully.")
+# ------------------------------------------------------------------------------
+# Visualization Tabs
+# ------------------------------------------------------------------------------
+st.subheader("3️⃣ Visualizations")
+tabs = st.tabs([
+    "3D Resonance Field",
+    "Energy Flow",
+    "Frequency Spectrum"
+])
 
-# ---------------------------------------------------------------------
-# TAB 2: Energy Mapping and Visualization
-# ---------------------------------------------------------------------
-with tab2:
-    st.header("🔸 Symbolic Energy Mapping")
-    st.write("Converts symbolic geometry into energetic representation fields.")
+# ------------------------------------------------------------------------------
+# Tab 1 – 3D Resonance Field
+# ------------------------------------------------------------------------------
+with tabs[0]:
+    st.markdown("### 🌐 Resonant Symbolic Clusters")
+    try:
+        fig_resonance = render_3d_resonance_field(resonance_matrix, clusters)
+        st.plotly_chart(fig_resonance, use_container_width=True)
+    except Exception as e:
+        st.error(f"Resonance visualization failed: {e}")
 
-    normalized_df = normalize_features(df)
-    energy_values = compute_energy_vectors(normalized_df)
-    resonance_matrix = compute_resonance_matrix(normalized_df)
+# ------------------------------------------------------------------------------
+# Tab 2 – Energy Flow Visualization
+# ------------------------------------------------------------------------------
+if show_energy_flow:
+    with tabs[1]:
+        st.markdown("### ⚡ Symbolic Energy Flow Field")
+        try:
+            flow_vectors = compute_energy_flow(data)
+            fig_flow = render_energy_flow_field(data, flow_vectors)
+            st.plotly_chart(fig_flow, use_container_width=True)
+        except Exception as e:
+            st.error(f"Energy flow visualization failed: {e}")
 
-    df["energy"] = energy_values
+# ------------------------------------------------------------------------------
+# Tab 3 – Frequency Spectrum
+# ------------------------------------------------------------------------------
+if show_frequency_spectrum:
+    with tabs[2]:
+        st.markdown("### 🔊 Symbolic Frequency Spectrum")
+        try:
+            symbol_energy = compute_symbol_energy(data)
+            fig_freq = render_frequency_spectrum(symbol_energy)
+            st.plotly_chart(fig_freq, use_container_width=True)
+        except Exception as e:
+            st.error(f"Frequency spectrum visualization failed: {e}")
 
-    st.subheader("Energy Table")
-    st.dataframe(df, use_container_width=True)
-
-    st.subheader("Energy Density Distribution")
-    st.bar_chart(df.set_index("symbol")["energy"])
-
-    st.subheader("Resonance Field (3D Visualization)")
-    fig = render_3d_resonance_field(resonance_matrix, None)
-    st.plotly_chart(fig, use_container_width=True)
-
-# ---------------------------------------------------------------------
-# TAB 3: Resonance Simulation (Dynamic)
-# ---------------------------------------------------------------------
-with tab3:
-    st.header("🔻 Resonance Evolution Simulation")
-    st.write("Simulate how symbolic energies evolve and stabilize through resonance coupling.")
-
-    play, pause, reset = play_pause_controls("energy_sim")
-
-    # Initialize or store energy matrix in session state
-    if "energy_matrix" not in st.session_state or reset:
-        st.session_state.energy_matrix = resonance_matrix.copy()
-        st.session_state.history = [resonance_matrix.copy()]
-
-    if play:
-        new_matrix = evolve_energy_step(st.session_state.energy_matrix)
-        st.session_state.energy_matrix = new_matrix
-        st.session_state.history.append(new_matrix)
-
-    # Compute energy density for display
-    densities = compute_energy_density(st.session_state.energy_matrix)
-    stabilized = detect_energy_stabilization(st.session_state.history)
-from modules.analytics import find_resonant_clusters
-
-clusters = find_resonant_clusters(resonance_matrix)
-fig = render_3d_resonance_field(resonance_matrix, clusters)
-
-        st.write(f"**Stabilization detected:** {'✅ Yes' if stabilized else '⏳ Not yet'}")
-
-        st.subheader("Energy Density by Symbol")
-        st.bar_chart(densities)
-
-        st.subheader("Evolving Resonance Field (3D)")
-    fig_field = render_energy_flow_field(df, st.session_state.energy_matrix)
-        st.plotly_chart(fig_field, use_container_width=True)
+# ------------------------------------------------------------------------------
+# Footer
+# ------------------------------------------------------------------------------
+st.markdown("""
+---
+💠 *Developed to support linguistic archaeology and energy pattern research.*  
+Use responsibly with respect for all living systems.
+""")
