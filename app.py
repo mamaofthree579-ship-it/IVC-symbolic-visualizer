@@ -7,6 +7,7 @@ from modules.analytics import (
     compute_resonance_matrix,
     find_resonant_clusters
 )
+
 from src.vector_plot import (
     render_3d_resonance_field,
     render_energy_flow_field,
