@@ -37,15 +37,6 @@ visual_choice = st.sidebar.multiselect(
     ]
 )
 
-# Data size selector
-n_symbols = st.sidebar.slider("Number of Symbols", 4, 20, 7)
-show_data = st.sidebar.checkbox("Show Data Tables", value=True)
-visual_choice = st.sidebar.multiselect(
-    "Select Visualization(s) to Display",
-    ["Resonance Field (3D)", "Energy Flow Field", "Frequency Spectrum"],
-    default=["Resonance Field (3D)", "Energy Flow Field"]
-)
-
 # --- Data Generation ---
 data = generate_sample_data(n_symbols)
 matrix = compute_resonance_matrix(data)
