@@ -1,6 +1,5 @@
 import streamlit as st
 import pandas as pd
-
 from modules.analytics import (
     generate_sample_data,
     compute_resonance_matrix,
@@ -8,75 +7,73 @@ from modules.analytics import (
     compute_symbol_energy,
     compute_energy_flow
 )
-
 from src.vector_plot import (
     render_3d_resonance_field,
     render_energy_flow_field,
-    render_frequency_spectrum
+    render_symbolic_network
 )
 
-# --- Page Setup ---
+# === Streamlit App ===
 st.set_page_config(page_title="IVC Symbolic Visualizer", layout="wide")
-st.title("🌐 IVC Symbolic Energy Visualizer")
 
-# --- Sidebar Controls ---
-st.sidebar.header("⚙️ Visualization Options")
-
-# Data size selector
-n_symbols = st.sidebar.slider("Number of Symbols", 4, 20, 7)
-show_data = st.sidebar.checkbox("Show Data Tables", value=True)
-visual_choice = st.sidebar.multiselect(
-    "Select Visualization(s) to Display",
-    [
-        "Resonance Field (3D)",
-        "Energy Flow Field",
-        "Frequency Spectrum",
-        "Symbolic Network Connectivity"
-    ],
-    default=[
-        "Resonance Field (3D)",
-        "Energy Flow Field",
-        "Symbolic Network Connectivity"
-    ]
-)
+st.title("🌐 IVC Symbolic Visualizer")
+st.caption("Exploring resonance, energy flow, and symbolic network relationships")
 
 # --- Data Generation ---
-data = generate_sample_data(n_symbols)
+st.sidebar.header("Data Controls")
+num_symbols = st.sidebar.slider("Number of Symbols", 3, 15, 7)
+threshold = st.sidebar.slider("Resonance Threshold", 0.3, 0.95, 0.6, 0.05)
+
+if "data" not in st.session_state:
+    st.session_state.data = generate_sample_data(num_symbols)
+
+if st.sidebar.button("🔄 Regenerate Data"):
+    st.session_state.data = generate_sample_data(num_symbols)
+
+data = st.session_state.data
+st.subheader("📊 Symbolic Data")
+st.dataframe(data.style.background_gradient(cmap="viridis"), use_container_width=True)
+
+# --- Resonance Matrix ---
+st.subheader("🔮 Resonance Matrix")
 matrix = compute_resonance_matrix(data)
-clusters = find_resonant_clusters(matrix)
-flow_vectors = compute_energy_flow(data)
+st.dataframe(matrix.style.background_gradient(cmap="plasma"), use_container_width=True)
 
-# --- Optional Data Tables ---
-if show_data:
-    st.subheader("Sample Symbolic Data")
-    st.dataframe(data)
+clusters = find_resonant_clusters(matrix, threshold)
 
-    st.subheader("Resonance Matrix")
-    st.dataframe(matrix)
+# --- 3D Resonance Visualization ---
+st.subheader("🌌 3D Resonance Field")
+try:
+    fig_resonance = render_3d_resonance_field(matrix, clusters)
+    st.plotly_chart(fig_resonance, use_container_width=True)
+except Exception as e:
+    st.error(f"Resonance field visualization failed: {e}")
 
-    st.subheader("Resonant Clusters")
-    st.write(clusters)
+# --- Energy Flow Visualization ---
+st.subheader("⚡ Energy Flow Field")
+try:
+    flow_vectors = compute_energy_flow(data)
+    fig_energy = render_energy_flow_field(data, flow_vectors)
+    st.plotly_chart(fig_energy, use_container_width=True)
+except Exception as e:
+    st.error(f"Energy flow visualization failed: {e}")
 
-# --- Visualizations ---
-if "Resonance Field (3D)" in visual_choice:
-    st.subheader("3D Resonance Field")
-    fig_res = render_3d_resonance_field(matrix, clusters)
-    st.plotly_chart(fig_res, use_container_width=True)
-
-if "Energy Flow Field" in visual_choice:
-    st.subheader("Symbolic Energy Flow Field")
-    fig_flow = render_energy_flow_field(data, flow_vectors)
-    st.plotly_chart(fig_flow, use_container_width=True)
-
-if "Frequency Spectrum" in visual_choice:
-    st.subheader("Symbolic Frequency Spectrum")
-    fig_freq = render_frequency_spectrum(data)
-    st.plotly_chart(fig_freq, use_container_width=True)
-
-if "Symbolic Network Connectivity" in visual_choice:
-    st.subheader("Symbolic Network Connectivity Map")
-    fig_network = render_symbolic_network(matrix)
+# --- Symbolic Network Visualization ---
+st.subheader("🌐 Symbolic Network Connectivity")
+try:
+    fig_network = render_symbolic_network(matrix, threshold=threshold)
     st.plotly_chart(fig_network, use_container_width=True)
-    
-st.success("✅ Visualization complete and interactive.")
-st.caption("Use the sidebar to adjust data and visualization layers.")
+except Exception as e:
+    st.error(f"Symbolic network visualization failed: {e}")
+
+# --- Symbol Energy Mapping ---
+st.subheader("💠 Symbol Energy Mapping")
+try:
+    energy = compute_symbol_energy(data)
+    energy_df = pd.DataFrame(energy, columns=["Energy"])
+    st.bar_chart(energy_df)
+except Exception as e:
+    st.error(f"Energy mapping failed: {e}")
+
+st.markdown("---")
+st.markdown("✨ *IVC Symbolic Visualizer – Dynamic Energy & Resonance System Prototype* ✨")
