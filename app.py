@@ -22,6 +22,21 @@ st.title("🌐 IVC Symbolic Energy Visualizer")
 # --- Sidebar Controls ---
 st.sidebar.header("⚙️ Visualization Options")
 
+visual_choice = st.sidebar.multiselect(
+    "Select Visualization(s) to Display",
+    [
+        "Resonance Field (3D)",
+        "Energy Flow Field",
+        "Frequency Spectrum",
+        "Symbolic Network Connectivity"
+    ],
+    default=[
+        "Resonance Field (3D)",
+        "Energy Flow Field",
+        "Symbolic Network Connectivity"
+    ]
+)
+
 # Data size selector
 n_symbols = st.sidebar.slider("Number of Symbols", 4, 20, 7)
 show_data = st.sidebar.checkbox("Show Data Tables", value=True)
@@ -64,5 +79,10 @@ if "Frequency Spectrum" in visual_choice:
     fig_freq = render_frequency_spectrum(data)
     st.plotly_chart(fig_freq, use_container_width=True)
 
+if "Symbolic Network Connectivity" in visual_choice:
+    st.subheader("Symbolic Network Connectivity Map")
+    fig_network = render_symbolic_network(matrix)
+    st.plotly_chart(fig_network, use_container_width=True)
+    
 st.success("✅ Visualization complete and interactive.")
 st.caption("Use the sidebar to adjust data and visualization layers.")
