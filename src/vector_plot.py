@@ -13,7 +13,6 @@ def render_3d_resonance_field(matrix, clusters):
 
     fig = go.Figure()
 
-    # Plot each cluster
     if clusters:
         for cluster in clusters:
             cluster_indices = [symbols.index(s) for s in cluster if s in symbols]
@@ -27,7 +26,6 @@ def render_3d_resonance_field(matrix, clusters):
                 name=f"Cluster {list(cluster)[0]}"
             ))
     else:
-        # fallback single group
         fig.add_trace(go.Scatter3d(
             x=coords[:, 0], y=coords[:, 1], z=coords[:, 2],
             mode="markers",
@@ -37,11 +35,7 @@ def render_3d_resonance_field(matrix, clusters):
 
     fig.update_layout(
         title="3D Resonance Matrix Field",
-        scene=dict(
-            xaxis_title="X",
-            yaxis_title="Y",
-            zaxis_title="Z"
-        ),
+        scene=dict(xaxis_title="X", yaxis_title="Y", zaxis_title="Z"),
         height=600
     )
     return fig
@@ -91,7 +85,6 @@ def render_energy_flow_field(df, flow_vectors):
     pca = PCA(n_components=3)
     coords = pca.fit_transform(df.values)
     X, Y, Z = coords[:, 0], coords[:, 1], coords[:, 2]
-
     U, V, W = flow_vectors[:, 0], flow_vectors[:, 1], flow_vectors[:, 2]
 
     fig = go.Figure(
@@ -106,43 +99,79 @@ def render_energy_flow_field(df, flow_vectors):
 
 
 # ------------------------------------------------------------------------------
-# Frequency Spectrum Visualization (FIXED)
+# Animated 3D Frequency Spectrum Visualization
 # ------------------------------------------------------------------------------
-def render_frequency_spectrum(energy_map):
-    """Render a 3D frequency-like spectrum of symbol energy values."""
+def render_frequency_spectrum(energy_map, steps=40):
+    """Animated 3D frequency spectrum pulsing with symbolic energy."""
     if not isinstance(energy_map, dict):
         raise ValueError("energy_map must be a dictionary")
 
     symbols = list(energy_map.keys())
-    energies = np.array(list(energy_map.values()))
+    base_energies = np.array(list(energy_map.values()))
     num_symbols = len(symbols)
 
-    # Generate pseudo-frequency and amplitude
     freqs = np.linspace(0.1, 2.0, num_symbols)
-    amplitudes = energies / energies.max() * 10.0
-    z = amplitudes * np.sin(freqs * np.pi)
 
-    fig = go.Figure()
+    # Create initial (base) frame
+    frames = []
+    for t in range(steps):
+        phase = (2 * np.pi * t) / steps
+        amplitudes = base_energies * (1 + 0.3 * np.sin(phase + freqs * np.pi))
+        z = amplitudes * np.sin(freqs * np.pi + phase)
 
-    # Each bar represented as a vertical line
-    for i, sym in enumerate(symbols):
-        fig.add_trace(go.Scatter3d(
-            x=[freqs[i], freqs[i]],
-            y=[0, energies[i]],
-            z=[0, z[i]],
-            mode="lines+markers",
-            line=dict(width=8, color="orange"),
-            marker=dict(size=4, color="red"),
-            name=sym
-        ))
+        frame_data = []
+        for i, sym in enumerate(symbols):
+            frame_data.append(go.Scatter3d(
+                x=[freqs[i], freqs[i]],
+                y=[0, amplitudes[i]],
+                z=[0, z[i]],
+                mode="lines+markers",
+                line=dict(width=8, color="orange"),
+                marker=dict(size=4, color="red"),
+                name=sym,
+                showlegend=False
+            ))
+        frames.append(go.Frame(data=frame_data, name=str(t)))
 
-    fig.update_layout(
-        title="3D Symbolic Frequency Spectrum",
-        scene=dict(
-            xaxis_title="Symbol Frequency",
-            yaxis_title="Amplitude (Energy)",
-            zaxis_title="Resonance Phase"
-        ),
-        height=600
+    # Base frame (t=0)
+    initial_traces = frames[0].data
+
+    fig = go.Figure(
+        data=initial_traces,
+        frames=frames,
+        layout=go.Layout(
+            title="Animated 3D Symbolic Frequency Spectrum",
+            scene=dict(
+                xaxis_title="Symbol Frequency",
+                yaxis_title="Amplitude (Energy)",
+                zaxis_title="Resonance Phase"
+            ),
+            height=650,
+            updatemenus=[{
+                "buttons": [
+                    {
+                        "args": [None, {"frame": {"duration": 100, "redraw": True},
+                                        "fromcurrent": True}],
+                        "label": "Play",
+                        "method": "animate"
+                    },
+                    {
+                        "args": [[None], {"frame": {"duration": 0, "redraw": False},
+                                          "mode": "immediate",
+                                          "transition": {"duration": 0}}],
+                        "label": "Pause",
+                        "method": "animate"
+                    }
+                ],
+                "direction": "left",
+                "pad": {"r": 10, "t": 70},
+                "showactive": False,
+                "type": "buttons",
+                "x": 0.1,
+                "xanchor": "right",
+                "y": 0,
+                "yanchor": "top"
+            }]
+        )
     )
     return fig
