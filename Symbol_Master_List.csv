@@ -1,11 +1,51 @@
-symbol_id,symbol_shape_family,description,trade_association,frequency_band_hz,harmonic_profile,notes
-S001,Oval,Large oval with central thickness,Agriculture,120,1+2,Low-band somatic resonance; base symbol
-S002,Stroke-Curve,Curved stroke with sinusoidal edges,Metallurgy,580,3+6,Responds strongly to mid-band modulation
-S003,Cluster-Dots,Three clustered dots,Logistics,340,2+7,Appears in inventory sequences
-S004,Trident,Three-prong upward fork,Ritual/Deity,8400,9+12,High-harmonic; possible activation anchor
-S005,Comb-Teeth,Five short vertical incisions,Civic Records,900,4+8,Common in administrative tags
-S006,Fish-Left,Left-facing fish glyph,Ritual,12000,10+16,Highest-band; complex holographic output
-S007,Gate-Shape,Two vertical lines with top bar,Urban/Infrastructure,700,3+5,Appears on granary seals
-S008,Rhombus,Diamond shape with cross-hatch,Agriculture,210,1+3,Correlates with storage/measure patterns
-S009,Crescent,Thin arc facing upward,Cosmic,15500,12+20,Likely celestial resonance encoding
-S010,Double-Oval,Two overlapping ovals,Energy Grid,7200,6+9,Mid-high multi-band composite
+sign_id,label,shape_family,suggested_base_freq_Hz,suggested_harmonic_overlay,hypoth_trade_assoc,rationale
+S-001,JAR,family_1,90,"[180,270]",AGRICULTURE,Hypothesized from shape complexity and archaeological context (working model).
+S-002,UNICORN_BULL,family_2,125,"[250,375]",METALLURGY,Hypothesized from shape complexity and archaeological context (working model).
+S-003,THREE_DOTS,family_3,170,"[340,510]",RITUAL,Hypothesized from shape complexity and archaeological context (working model).
+S-004,COMPOUND_DEITY,family_4,215,"[430,645]",TRADE,Hypothesized from shape complexity and archaeological context (working model).
+S-005,WAVE_LINE,family_5,260,"[520,780]",ADMIN,Hypothesized from shape complexity and archaeological context (working model).
+S-006,KNIFE,family_6,325,"[650,975]",TEXTILE,Hypothesized from shape complexity and archaeological context (working model).
+S-007,ANCHOR_LIKE,family_7,390,"[780,1170]",SHIPPING,Hypothesized from shape complexity and archaeological context (working model).
+S-008,CROSS_HATCH,family_8,420,"[840,1260]",IDENTITY,Hypothesized from shape complexity and archaeological context (working model).
+S-009,TRIANGULAR,family_9,485,"[970,1455]",NUMERIC,Hypothesized from shape complexity and archaeological context (working model).
+S-010,VERTICAL_STROKE,family_10,550,"[1100,1650]",ENERGY,Hypothesized from shape complexity and archaeological context (working model).
+S-011,FISH,family_1,615,"[1230,1845]",AGRICULTURE,Hypothesized from shape complexity and archaeological context (working model).
+S-012,TREE,family_2,740,"[1480,2220]",METALLURGY,Hypothesized from shape complexity and archaeological context (working model).
+S-013,HUMANOID,family_3,925,"[1850,2775]",RITUAL,Hypothesized from shape complexity and archaeological context (working model).
+S-014,MOUNTAIN,family_4,1230,"[2460,3690]",TRADE,Hypothesized from shape complexity and archaeological context (working model).
+S-015,SCEPTER,family_5,1500,"[3000,4500]",ADMIN,Hypothesized from shape complexity and archaeological context (working model).
+S-016,BIRD,family_6,1805,"[3610,5415]",TEXTILE,Hypothesized from shape complexity and archaeological context (working model).
+S-017,CRESCENT,family_7,2110,"[4220,6330]",SHIPPING,Hypothesized from shape complexity and archaeological context (working model).
+S-018,CIRCLE_DOT,family_8,2415,"[4830,7245]",IDENTITY,Hypothesized from shape complexity and archaeological context (working model).
+S-019,SQUARE,family_9,3020,"[6040,9060]",NUMERIC,Hypothesized from shape complexity and archaeological context (working model).
+S-020,ZIGZAG,family_10,3625,"[7250,10875]",ENERGY,Hypothesized from shape complexity and archaeological context (working model).
+S-021,HORN,family_1,4230,"[8460,12690]",AGRICULTURE,Hypothesized from shape complexity and archaeological context (working model).
+S-022,POTTERY_MARK,family_2,4800,"[9600,14400]",METALLURGY,Hypothesized from shape complexity and archaeological context (working model).
+S-023,STAR,family_3,5405,"[10810,16215]",RITUAL,Hypothesized from shape complexity and archaeological context (working model).
+S-024,LADDER,family_4,6010,"[12020,18030]",TRADE,Hypothesized from shape complexity and archaeological context (working model).
+S-025,NET_PATTERN,family_5,7215,"[14430,21645]",ADMIN,Hypothesized from shape complexity and archaeological context (working model).
+S-026,ROPE,family_6,8420,"[16840,25260]",TEXTILE,Hypothesized from shape complexity and archaeological context (working model).
+S-027,BOAT,family_7,9625,"[19250,28875]",SHIPPING,Hypothesized from shape complexity and archaeological context (working model).
+S-028,KEYLIKE,family_8,10830,"[21660,32490]",IDENTITY,Hypothesized from shape complexity and archaeological context (working model).
+S-029,DIAMOND,family_9,12000,"[24000,36000]",NUMERIC,Hypothesized from shape complexity and archaeological context (working model).
+S-030,SERPENT,family_10,14005,"[28010,42015]",ENERGY,Hypothesized from shape complexity and archaeological context (working model).
+S-031,PLATFORM,family_1,16010,"[32020,48030]",AGRICULTURE,Hypothesized from shape complexity and archaeological context (working model).
+S-032,HANDPRINT,family_2,18015,"[36030,54045]",METALLURGY,Hypothesized from shape complexity and archaeological context (working model).
+S-033,SUNRAY,family_3,20020,"[40040,60060]",RITUAL,Hypothesized from shape complexity and archaeological context (working model).
+S-034,EYE,family_4,115,"[230,345]",TRADE,Hypothesized from shape complexity and archaeological context (working model).
+S-035,WHEEL,family_5,150,"[300,450]",ADMIN,Hypothesized from shape complexity and archaeological context (working model).
+S-036,FOLD,family_6,160,"[320,480]",TEXTILE,Hypothesized from shape complexity and archaeological context (working model).
+S-037,GRAIN,family_7,205,"[410,615]",SHIPPING,Hypothesized from shape complexity and archaeological context (working model).
+S-038,BULLET,family_8,250,"[500,750]",IDENTITY,Hypothesized from shape complexity and archaeological context (working model).
+S-039,ROSETTE,family_9,315,"[630,945]",NUMERIC,Hypothesized from shape complexity and archaeological context (working model).
+S-040,CURVED_BLADE,family_10,380,"[760,1140]",ENERGY,Hypothesized from shape complexity and archaeological context (working model).
+S-041,PALM,family_1,445,"[890,1335]",AGRICULTURE,Hypothesized from shape complexity and archaeological context (working model).
+S-042,HORSE,family_2,510,"[1020,1530]",METALLURGY,Hypothesized from shape complexity and archaeological context (working model).
+S-043,BEEHIVE,family_3,540,"[1080,1620]",RITUAL,Hypothesized from shape complexity and archaeological context (working model).
+S-044,TURBAN,family_4,605,"[1210,1815]",TRADE,Hypothesized from shape complexity and archaeological context (working model).
+S-045,FLAG,family_5,730,"[1460,2190]",ADMIN,Hypothesized from shape complexity and archaeological context (working model).
+S-046,CLOTH,family_6,915,"[1830,2745]",TEXTILE,Hypothesized from shape complexity and archaeological context (working model).
+S-047,LOCK,family_7,1220,"[2440,3660]",SHIPPING,Hypothesized from shape complexity and archaeological context (working model).
+S-048,PENDANT,family_8,1525,"[3050,4575]",IDENTITY,Hypothesized from shape complexity and archaeological context (working model).
+S-049,MACE,family_9,1830,"[3660,5490]",NUMERIC,Hypothesized from shape complexity and archaeological context (working model).
+S-050,FORK,family_10,2100,"[4200,6300]",ENERGY,Hypothesized from shape complexity and archaeological context (working model).
