@@ -1,0 +1,11 @@
+symbol_id,symbol_shape_family,description,trade_association,frequency_band_hz,harmonic_profile,notes
+S001,Oval,Large oval with central thickness,Agriculture,120,1+2,Low-band somatic resonance; base symbol
+S002,Stroke-Curve,Curved stroke with sinusoidal edges,Metallurgy,580,3+6,Responds strongly to mid-band modulation
+S003,Cluster-Dots,Three clustered dots,Logistics,340,2+7,Appears in inventory sequences
+S004,Trident,Three-prong upward fork,Ritual/Deity,8400,9+12,High-harmonic; possible activation anchor
+S005,Comb-Teeth,Five short vertical incisions,Civic Records,900,4+8,Common in administrative tags
+S006,Fish-Left,Left-facing fish glyph,Ritual,12000,10+16,Highest-band; complex holographic output
+S007,Gate-Shape,Two vertical lines with top bar,Urban/Infrastructure,700,3+5,Appears on granary seals
+S008,Rhombus,Diamond shape with cross-hatch,Agriculture,210,1+3,Correlates with storage/measure patterns
+S009,Crescent,Thin arc facing upward,Cosmic,15500,12+20,Likely celestial resonance encoding
+S010,Double-Oval,Two overlapping ovals,Energy Grid,7200,6+9,Mid-high multi-band composite
