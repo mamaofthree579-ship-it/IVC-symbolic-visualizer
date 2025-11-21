@@ -20,9 +20,9 @@ This system performs:
 # ---------------------------------------------------------
 # Update these filenames to match YOUR uploaded JPGs
 BUILT_INS = {
-    "Jar": "A_digital_vector_image_displays_three_black_Indus_.jpg",
-    "Fish": "indus_fish.jpg",
-    "Double Fish": "indus_double_fish.jpg"
+    "Jar": "Phone/jar..jpg",
+    "Fish": "Phone/fish.jpg",
+    "Double Fish": "Phone/double_fish.jpg"
 }
 
 def load_image(path):
