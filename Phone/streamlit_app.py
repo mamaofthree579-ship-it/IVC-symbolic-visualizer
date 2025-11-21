@@ -20,7 +20,7 @@ This system performs:
 # ---------------------------------------------------------
 # Update these filenames to match YOUR uploaded JPGs
 BUILT_INS = {
-    "Jar": "Phone/jar..jpg",
+    "Jar": "Phone/jar.jpg",
     "Fish": "Phone/fish.jpg",
     "Double Fish": "Phone/double_fish.jpg"
 }
