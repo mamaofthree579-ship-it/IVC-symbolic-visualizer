@@ -4,7 +4,7 @@ from PIL import Image, ImageOps
 from scipy.fft import fft2, fftshift
 import io
 
-st.set_page_config(page_title="Indus Symbol Resonance Lab", layout="wide")
+set_page_config(page_title="Indus Symbol Resonance Lab", layout="wide")
 
 # ======================================================
 # IMAGE PREPROCESSING PIPELINE
