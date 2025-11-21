@@ -8,7 +8,7 @@ st.title("Indus Resonance Lab — Built-In Symbols")
 
 # ----------- File Paths -----------
 BUILT_INS = {
-    "Jar": "A_digital_vector_image_displays_three_black_Indus_.png",  # You uploaded this file
+    "Jar": "Phone/jar.jpg",  # You uploaded this file
 }
 
 # If we want to slice the 3 symbols from the sheet:
