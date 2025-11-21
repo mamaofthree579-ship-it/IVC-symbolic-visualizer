@@ -12,13 +12,6 @@ st.set_page_config(page_title="Indus Resonance Lab — Ultimate", layout="wide")
 st.title("Indus Symbol Resonance Lab — Ultimate Suite")
 
 # ---------------------------
-# Configuration / workspace sheet
-# ---------------------------
-WORKSPACE_SHEET_PATH = "/mnt/data/A_digital_vector_image_displays_three_black_Indus_.png"
-PERSIST_DIR = "indus_state"
-os.makedirs(PERSIST_DIR, exist_ok=True)
-
-# ---------------------------
 # Utilities: autocrop, load, safe
 # ---------------------------
 def autocrop(img: Image.Image, tol: int = 10) -> Image.Image:
