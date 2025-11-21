@@ -33,7 +33,7 @@ if uploaded:
     st.pyplot(fig)
 
 st.header("🔊 Generate Test Waveform")
-freq = st.slider("Frequency (Hz)", 1, 100, 20)
+freq = st.slider("Frequency (Hz)", 1, 1200, 60)
 amp = st.slider("Amplitude", 1, 10, 3)
 
 if st.button("Generate Waveform"):
