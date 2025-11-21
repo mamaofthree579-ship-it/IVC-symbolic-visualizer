@@ -5,7 +5,7 @@ import os
 
 st.set_page_config(page_title="Indus Resonance System", layout="centered")
 
-st.title("Indus Symbol Resonance • Full System")
+st.title("Indus Symbol Resonance • Full System (Auto-Normalizing Version)")
 
 # ======================================================
 #  SAFETY NORMALIZER — FIXES ALL RUNTIMEERRORS
@@ -19,28 +19,45 @@ def safe_image(arr):
     return arr
 
 # ======================================================
-# 1 — BUILT-IN SYMBOLS  
-# UPDATE THESE FILENAMES TO MATCH YOUR JPG UPLOADS
+# UNIVERSAL AUTO-RESIZE + PADDING LOADER
+# Accepts any JPG/PNG, from any size, and normalizes to 256×256
+# ======================================================
+def load_and_normalize(img_file, target_size=256):
+    img = Image.open(img_file).convert("L")
+
+    # Step 1 — resize longest side to target size
+    w, h = img.size
+    scale = target_size / max(w, h)
+    new_w, new_h = int(w * scale), int(h * scale)
+    img = img.resize((new_w, new_h), Image.LANCZOS)
+
+    # Step 2 — center-pad to target_size x target_size
+    canvas = Image.new("L", (target_size, target_size), 255)
+    offset = ((target_size - new_w) // 2, (target_size - new_h) // 2)
+    canvas.paste(img, offset)
+
+    return np.array(canvas).astype(np.float32)
+
+# ======================================================
+# BUILT-IN SYMBOLS (UPDATE WITH YOUR FILENAMES)
 # ======================================================
 BUILT_INS = {
-    # Replace these strings with the *exact* filenames you uploaded to Streamlit
     "Jar": "Phone/jar.jpg",
     "Fish": "Phone/fish.jpg",
     "Double Fish": "Phone/double_fish.jpg"
 }
 
-def load_image(path):
-    return Image.open(path).convert("L")
-
-def load_or_warn(path):
-    if os.path.exists(path):
-        return load_image(path)
-    else:
-        st.error(f"Missing file: {path}")
+# ======================================================
+# LOAD BUILT-IN SYMBOLS SAFELY
+# ======================================================
+def load_builtin(path):
+    if not os.path.exists(path):
+        st.error(f"Missing built-in file: {path}")
         return None
+    return load_and_normalize(path)
 
 # ======================================================
-# SYMBOL SELECTION
+# 1 — Single Symbol Viewer
 # ======================================================
 st.header("Built-In Symbols")
 
@@ -48,12 +65,10 @@ symbol_names = list(BUILT_INS.keys())
 choice = st.selectbox("Choose a symbol:", symbol_names)
 
 img_path = BUILT_INS[choice]
-img = load_or_warn(img_path)
+arr = load_builtin(img_path)
 
-if img is not None:
-
-    st.image(img, caption=f"{choice} (source)", use_column_width=True)
-    arr = np.array(img).astype(np.float32)
+if arr is not None:
+    st.image(safe_image(arr), caption=f"{choice} (normalized)", use_column_width=True)
 
     # ======================================================
     # 2 — FFT RESONANCE MAP
@@ -67,7 +82,7 @@ if img is not None:
     st.image(safe_image(mag), caption="Resonance Spectrum", use_column_width=True)
 
     # ======================================================
-    # 3 — RESONANCE ACTIVATION
+    # 3 — Activation Frequency
     # ======================================================
     st.subheader("Activation Frequency")
 
@@ -80,7 +95,7 @@ if img is not None:
     st.image(safe_image(resonance), caption=f"Response @ {freq} Hz", use_column_width=True)
 
     # ======================================================
-    # 4 — HOLOGRAPHIC GEOMETRY CLASSIFIER
+    # 4 — Holographic Geometry Classifier
     # ======================================================
     st.header("Holographic Geometry Classification")
 
@@ -94,7 +109,7 @@ if img is not None:
     h_sym = np.sum(np.abs(norm - np.flip(norm, axis=0)))
     h_score = 1 - (h_sym / norm.size)
 
-    # Radial lobes
+    # Radial lobe estimator
     center = (norm.shape[0]//2, norm.shape[1]//2)
     angles = np.arctan2(
         *np.indices(norm.shape)[::-1] - np.array(center)[:,None,None]
@@ -103,11 +118,10 @@ if img is not None:
     hist, _ = np.histogram(angles, bins=radial_bins, weights=norm)
     lobe_count = (hist > 0.3 * hist.max()).sum()
 
-    # Rotational harmonic signature
+    # Rotational harmonics (FFT of radial distribution)
     fft1d = np.abs(np.fft.fft(hist))
     rot_harmonics = (fft1d > 0.2 * fft1d.max()).sum()
 
-    # Geometry code
     geo_code = f"G{lobe_count}-V{v_score:.2f}-H{h_score:.2f}-R{rot_harmonics}"
     st.subheader("Geometry Code:")
     st.code(geo_code)
@@ -124,30 +138,25 @@ multi_files = st.file_uploader(
 )
 
 if multi_files:
-    imgs = [np.array(Image.open(f).convert("L"), dtype=np.float32) for f in multi_files]
-    shapes = set([im.shape for im in imgs])
+    imgs = [load_and_normalize(f) for f in multi_files]
 
-    if len(shapes) > 1:
-        st.error("All images must be the same size.")
-    else:
-        stacked = np.stack(imgs, axis=0)
+    st.subheader("Set Harmonic Weights")
+    weights = []
+    for i, f in enumerate(multi_files):
+        w = st.slider(f"Weight for {f.name}", 0.0, 3.0, 1.0, 0.1)
+        weights.append(w)
 
-        st.subheader("Set Harmonic Weights")
-        weights = []
-        for i, f in enumerate(multi_files):
-            w = st.slider(f"Weight for {f.name}", 0.0, 3.0, 1.0, 0.1)
-            weights.append(w)
+    weights = np.array(weights).reshape(-1,1,1)
+    stacked = np.stack(imgs, axis=0)
+    combined = np.sum(stacked * weights, axis=0)
 
-        weights = np.array(weights).reshape(-1,1,1)
-        combined = np.sum(stacked * weights, axis=0)
-
-        st.subheader("Composite Harmonic Output")
-        st.image(safe_image(combined), use_column_width=True)
+    st.subheader("Composite Harmonic Output")
+    st.image(safe_image(combined), use_column_width=True)
 
 # ======================================================
-# 6 — SEQUENCE ENGINE (A → B → C)
+# 6 — SYMBOL SEQUENCE ENGINE (A → B → C)
 # ======================================================
-st.header("Sequence Engine")
+st.header("Symbol Sequence Engine")
 
 seq_files = st.file_uploader(
     "Upload up to 3 symbols in sequence order:",
@@ -156,16 +165,13 @@ seq_files = st.file_uploader(
 )
 
 if seq_files:
-    imgs = [np.array(Image.open(f).convert("L"), dtype=np.float32) for f in seq_files]
+    imgs = [load_and_normalize(f) for f in seq_files]
 
-    if len(set([im.shape for im in imgs])) > 1:
-        st.error("All images must be the same size.")
-    else:
-        st.write("Sequence:", " → ".join([f.name for f in seq_files]))
+    st.write("Sequence:", " → ".join(f.name for f in seq_files))
 
-        out = imgs[0] / 255.0
-        for next_img in imgs[1:]:
-            out = np.sin(out + next_img/255.0)
+    out = imgs[0] / 255.0
+    for nxt in imgs[1:]:
+        out = np.sin(out + nxt / 255.0)
 
-        st.subheader("Sequence Output")
-        st.image(safe_image(out), use_column_width=True)
+    st.subheader("Sequence Output")
+    st.image(safe_image(out), use_column_width=True)
