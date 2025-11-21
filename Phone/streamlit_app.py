@@ -1,70 +1,54 @@
 import streamlit as st
 import numpy as np
 from PIL import Image
-import io
+import os
 
-st.set_page_config(page_title="Indus Symbol Resonance Lab", layout="centered")
+st.set_page_config(page_title="Indus Resonance Lab", layout="centered")
+st.title("Indus Resonance Lab — Built-In Symbols")
 
-st.title("Indus Symbol Resonance Lab")
-st.markdown("Upload a symbol PNG to analyze its frequency response.")
+# ----------- File Paths -----------
+BUILT_INS = {
+    "Jar": "A_digital_vector_image_displays_three_black_Indus_.png",  # You uploaded this file
+}
 
-# --- Upload zone ---
-uploaded_file = st.file_uploader("Upload a symbol PNG", type=["png","jpg","jpeg"])
+# If we want to slice the 3 symbols from the sheet:
+def load_symbol_from_sheet(path, index):
+    img = Image.open(path).convert("L")
+    w, h = img.size
+    left = int(index * w / 3)
+    right = int((index + 1) * w / 3)
+    crop = img.crop((left, 0, right, h))
+    crop = crop.resize((512,512))
+    return crop
 
-if uploaded_file:
-    # load image
-    image = Image.open(uploaded_file).convert("L")
-    st.image(image, caption="Uploaded Symbol", use_column_width=True)
+# Auto load 3 symbols from uploaded file
+images = {
+    "Jar": load_symbol_from_file ("Phone/jar.jpg"),
+    "Fish": load_symbol_from_file("Phone/fish.jpg"),
+    "Double Fish": load_symbol_from_file("Phone/double_fish.jpg)
+}
 
-    # convert to numpy
-    arr = np.array(image).astype(np.float32)
+# ----------- Symbol Selection -----------
+choice = st.selectbox("Choose symbol", list(symbols.keys()))
+image = symbols[choice]
+st.image(image, caption=f"{choice} Symbol", use_column_width=True)
 
-    # --- FFT ---
-    fft = np.fft.fft2(arr)
-    fft_shift = np.fft.fftshift(fft)
-    mag = np.log(np.abs(fft_shift) + 1)
+arr = np.array(image).astype(np.float32)
 
-    st.subheader("FFT Resonance Map")
-    st.image(mag / mag.max(), caption="Frequency-domain amplitude", use_column_width=True)
+# ---------------- FFT ----------------
+st.subheader("FFT Resonance Map")
+fft = np.fft.fft2(arr)
+fft_shift = np.fft.fftshift(fft)
+mag = np.log(np.abs(fft_shift) + 1)
+st.image(mag/mag.max(), use_column_width=True)
 
-    # --- Frequency slider ---
-    freq = st.slider("Activation Frequency (Hz)", 1, 100, 30)
+# Frequency slider
+freq = st.slider("Activation Frequency (Hz)", 1, 100, 30)
 
-    # simple synthetic model: resonance = symbol * sine wave
-    y, x = np.indices(arr.shape)
-    wave = np.sin(2*np.pi*freq * x/arr.shape[1])
-    resonance = (arr / 255.0) * (wave + 1.0)
+# Wave resonance model
+y, x = np.indices(arr.shape)
+wave = np.sin(2*np.pi*freq * x / arr.shape[1])
+resonance = (arr/255.0) * (wave + 1)
 
-    st.subheader("Resonance Output")
-    st.image(resonance, caption=f"Response at {freq} Hz", use_column_width=True)
-
-# ------------- Multi-symbol math model -------------
-st.header("Multi-Symbol Harmonic Composer")
-
-uploaded_files = st.file_uploader(
-    "Upload 2–3 PNGs to combine",
-    type=["png","jpg","jpeg"],
-    accept_multiple_files=True
-)
-
-if uploaded_files:
-    images = [np.array(Image.open(f).convert("L"), dtype=np.float32) for f in uploaded_files]
-    shapes = list(set([img.shape for img in images]))
-
-    if len(shapes) > 1:
-        st.error("All images must have the same size.")
-    else:
-        stacked = np.stack(images, axis=0)
-
-        # harmonic weights
-        st.subheader("Symbol Harmonic Weights")
-        weights = []
-        for i, f in enumerate(uploaded_files):
-            w = st.slider(f"Weight for {f.name}", 0.0, 2.0, 1.0, 0.1)
-            weights.append(w)
-
-        weights = np.array(weights).reshape(-1, 1, 1)
-        combined = np.sum(stacked * weights, axis=0)
-
-        st.subheader("Combined Harmonic Signature")
-        st.image(combined / combined.max(), use_column_width=True)
+st.subheader(f"Resonance Output @ {freq} Hz")
+st.image(resonance, use_column_width=True)
