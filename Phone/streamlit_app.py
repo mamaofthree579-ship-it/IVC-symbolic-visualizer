@@ -25,7 +25,7 @@ def load_symbol_from_sheet(path, index):
 images = {
     "Jar": load_symbol_from_file ("Phone/jar.jpg"),
     "Fish": load_symbol_from_file("Phone/fish.jpg"),
-    "Double Fish": load_symbol_from_file("Phone/double_fish.jpg)
+    "Double Fish": load_symbol_from_file("Phone/double_fish.jpg")
 }
 
 # ----------- Symbol Selection -----------
