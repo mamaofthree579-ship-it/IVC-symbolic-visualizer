@@ -1,48 +1,70 @@
 import streamlit as st
 import numpy as np
-import matplotlib.pyplot as plt
 from PIL import Image
+import io
 
-st.set_page_config(page_title="Indus Waveform Lite", layout="centered")
+st.set_page_config(page_title="Indus Symbol Resonance Lab", layout="centered")
 
-st.title("🛕 Indus Waveform Simulator — Mobile Edition")
-st.write("""
-This version is designed specifically to run **on Streamlit Cloud**, 
-so you can open it on your **phone** with no installation needed.
-""")
+st.title("Indus Symbol Resonance Lab")
+st.markdown("Upload a symbol PNG to analyze its frequency response.")
 
-st.header("📤 Upload Indus Symbol")
-uploaded = st.file_uploader("Upload PNG or JPG symbol", type=["png","jpg","jpeg"])
+# --- Upload zone ---
+uploaded_file = st.file_uploader("Upload a symbol PNG", type=["png","jpg","jpeg"])
 
-if uploaded:
-    img = Image.open(uploaded).convert("L")
-    arr = np.array(img)
+if uploaded_file:
+    # load image
+    image = Image.open(uploaded_file).convert("L")
+    st.image(image, caption="Uploaded Symbol", use_column_width=True)
 
-    st.image(img, caption="Uploaded Symbol", width=250)
+    # convert to numpy
+    arr = np.array(image).astype(np.float32)
 
-    st.subheader("📡 FFT Frequency Response")
+    # --- FFT ---
+    fft = np.fft.fft2(arr)
+    fft_shift = np.fft.fftshift(fft)
+    mag = np.log(np.abs(fft_shift) + 1)
 
-    # Basic FFT
-    F = np.abs(np.fft.fftshift(np.fft.fft2(arr)))
+    st.subheader("FFT Resonance Map")
+    st.image(mag / mag.max(), caption="Frequency-domain amplitude", use_column_width=True)
 
-    fig, ax = plt.subplots()
-    ax.imshow(np.log(F + 1), cmap="inferno")
-    ax.set_title("Frequency Spectrum (log-scaled)")
-    ax.axis("off")
+    # --- Frequency slider ---
+    freq = st.slider("Activation Frequency (Hz)", 1, 100, 30)
 
-    st.pyplot(fig)
+    # simple synthetic model: resonance = symbol * sine wave
+    y, x = np.indices(arr.shape)
+    wave = np.sin(2*np.pi*freq * x/arr.shape[1])
+    resonance = (arr / 255.0) * (wave + 1.0)
 
-st.header("🔊 Generate Test Waveform")
-freq = st.slider("Frequency (Hz)", 1, 1200, 60)
-amp = st.slider("Amplitude", 1, 10, 3)
+    st.subheader("Resonance Output")
+    st.image(resonance, caption=f"Response at {freq} Hz", use_column_width=True)
 
-if st.button("Generate Waveform"):
-    t = np.linspace(0, 1, 1000)
-    y = amp * np.sin(2*np.pi*freq*t)
+# ------------- Multi-symbol math model -------------
+st.header("Multi-Symbol Harmonic Composer")
 
-    fig, ax = plt.subplots()
-    ax.plot(t, y)
-    ax.set_title(f"Sine Wave — {freq} Hz")
-    st.pyplot(fig)
+uploaded_files = st.file_uploader(
+    "Upload 2–3 PNGs to combine",
+    type=["png","jpg","jpeg"],
+    accept_multiple_files=True
+)
 
-st.info("This lightweight edition works fully on Streamlit Cloud and mobile browsers.")
+if uploaded_files:
+    images = [np.array(Image.open(f).convert("L"), dtype=np.float32) for f in uploaded_files]
+    shapes = list(set([img.shape for img in images]))
+
+    if len(shapes) > 1:
+        st.error("All images must have the same size.")
+    else:
+        stacked = np.stack(images, axis=0)
+
+        # harmonic weights
+        st.subheader("Symbol Harmonic Weights")
+        weights = []
+        for i, f in enumerate(uploaded_files):
+            w = st.slider(f"Weight for {f.name}", 0.0, 2.0, 1.0, 0.1)
+            weights.append(w)
+
+        weights = np.array(weights).reshape(-1, 1, 1)
+        combined = np.sum(stacked * weights, axis=0)
+
+        st.subheader("Combined Harmonic Signature")
+        st.image(combined / combined.max(), use_column_width=True)
