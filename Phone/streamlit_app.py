@@ -7,19 +7,7 @@ st.set_page_config(page_title="Indus Resonance Lab", layout="centered")
 st.title("Indus Resonance Lab — Built-In Symbols")
 
 # ----------- File Paths -----------
-BUILT_INS = {
-    "Jar": "Phone/jar.jpg",  # You uploaded this file
-}
 
-# If we want to slice the 3 symbols from the sheet:
-def load_symbol_from_sheet(path, index):
-    img = Image.open(path).convert("L")
-    w, h = img.size
-    left = int(index * w / 3)
-    right = int((index + 1) * w / 3)
-    crop = img.crop((left, 0, right, h))
-    crop = crop.resize((512,512))
-    return crop
 
 # Auto load 3 symbols from uploaded file
 images = {
