@@ -1,37 +1,63 @@
 # app.py
-# Indus Resonance Lab — Complete, self-contained application
-# Features:
-# - Auto-crop + normalize uploads
-# - Geometry extraction + FFT visualization
-# - Cosmic detector (radial/ring)
-# - Symbol DNA (256 fingerprint)
-# - Meaning inference layers
-# - Harmonic composite, sequence engine
-# - Ritual simulator (optical + acoustic)
-# - Audio synth and playback
-# - Sweep GIF generation (optical & acoustic)
-# - Export DNA + features ZIP
-# - HTML hypothesis report generation
-# - Session recording and basic persistence
-#
-# Variables used throughout:
-# arrs, names, dna_list, features_list, cosmic_list
-#
-# Optional workspace sample file (unused if not present)
+# Indus Resonance Lab — Full Upgrades (multi-layer engine + all requested features)
+# Paste into app.py and run: streamlit run app.py
+# Optional workspace sheet path (only used if you enable it in UI)
 WORKSPACE_SHEET_PATH = "/mnt/data/A_digital_vector_image_displays_three_black_Indus_.png"
 
 import streamlit as st
 import numpy as np
-from PIL import Image
-import io, os, json, csv, base64, math
+from PIL import Image, ImageOps
+import io, os, json, csv, math, base64, tempfile, time
 import matplotlib.pyplot as plt
 
-st.set_page_config(page_title="Indus Resonance Lab — All-in-One", layout="wide")
-st.title("Indus Symbol Resonance Lab — All-in-One")
+st.set_page_config(page_title="Indus Resonance Lab — Ultimate", layout="wide")
+st.title("Indus Symbol Resonance Lab — Ultimate (All Upgrades)")
 
-# ----------------------------
-# Utilities: autocrop, normalize
-# ----------------------------
+# --------------------
+# Utilities: file / persist
+# --------------------
+PERSIST_DIR = "indus_state"
+os.makedirs(PERSIST_DIR, exist_ok=True)
+RULES_FILE = os.path.join(PERSIST_DIR, "rule_base.json")
+MAPPINGS_FILE = os.path.join(PERSIST_DIR, "user_mappings.json")
+SESSION_FILE = os.path.join(PERSIST_DIR, "session_log.json")
+CENTROIDS_FILE = os.path.join(PERSIST_DIR, "kmeans_centroids.json")
+
+def load_json(path, default):
+    try:
+        if os.path.exists(path):
+            with open(path, "r") as f:
+                return json.load(f)
+    except Exception:
+        return default
+    return default
+
+def save_json(path, obj):
+    with open(path, "w") as f:
+        json.dump(obj, f, indent=2)
+
+# session_persistent storage
+if "rule_base" not in st.session_state:
+    st.session_state.rule_base = load_json(RULES_FILE, [
+        {"id":"rule_container","label":"Container/Storage","conditions":{"v_score_min":0.6,"h_score_max":0.6,"lobe_max":2},"confidence":0.85,"explanation":"vertical symmetry + few lobes"},
+        {"id":"rule_flow","label":"Flow/Movement","conditions":{"h_score_min":0.45,"centroid_shift_min":0.03},"confidence":0.78,"explanation":"horizontal symmetry + centroid shift"},
+        {"id":"rule_pair","label":"Duality/Pairing","conditions":{"lobe_min":3,"rot_harmonics_min":2},"confidence":0.88,"explanation":"multiple lobes"},
+        {"id":"rule_celestial","label":"Cosmic/Celestial","conditions":{"rot_harmonics_min":4,"lobe_min":4},"confidence":0.92,"explanation":"rich rotational harmonic structure"},
+        {"id":"rule_numeric","label":"Numeric/Count","conditions":{"lobe_max":1,"centroid_shift_max":0.02},"confidence":0.6,"explanation":"simple centered mark"}
+    ])
+
+if "user_mappings" not in st.session_state:
+    st.session_state.user_mappings = load_json(MAPPINGS_FILE, {})
+
+if "session_log" not in st.session_state:
+    st.session_state.session_log = load_json(SESSION_FILE, [])
+
+if "kmeans_centroids" not in st.session_state:
+    st.session_state.kmeans_centroids = load_json(CENTROIDS_FILE, {})
+
+# --------------------
+# Image helpers: autocrop, normalize, load
+# --------------------
 def autocrop(img: Image.Image, tol: int = 10) -> Image.Image:
     gray = img.convert("L")
     arr = np.array(gray)
@@ -43,14 +69,15 @@ def autocrop(img: Image.Image, tol: int = 10) -> Image.Image:
         return img.crop((x0, y0, x1, y1))
     return img
 
-def load_and_normalize(img_file, target_size:int=256) -> np.ndarray:
-    """Load a file path or a streamlit UploadedFile and return a 0..1 float32 array target_size^2"""
+def load_and_normalize(img_file, target_size=256, autocrop_tol=10, autotrim=True):
+    # accepts path or streamlit UploadedFile
     if isinstance(img_file, str):
         img = Image.open(img_file).convert("L")
     else:
         img_file.seek(0)
         img = Image.open(img_file).convert("L")
-    img = autocrop(img)
+    if autotrim:
+        img = autocrop(img, tol=autocrop_tol)
     w, h = img.size
     scale = target_size / max(w, h)
     img = img.resize((int(w*scale), int(h*scale)), Image.LANCZOS)
@@ -62,17 +89,17 @@ def load_and_normalize(img_file, target_size:int=256) -> np.ndarray:
         arr = (arr - arr.min()) / (arr.max() - arr.min() + 1e-12)
     return arr
 
-def safe_image(arr: np.ndarray) -> np.ndarray:
+def safe_image(arr):
     a = np.nan_to_num(arr)
     a = a - a.min()
     if a.max() > 0:
         a = a / a.max()
     return a
 
-# ----------------------------
-# Geometry & features extraction
-# ----------------------------
-def geometry_features_from_image(arr: np.ndarray) -> dict:
+# --------------------
+# Geometry & features
+# --------------------
+def geometry_features_from_image(arr):
     N = arr.shape[0]
     fft = np.fft.fft2(arr)
     fft_shift = np.fft.fftshift(fft)
@@ -102,7 +129,6 @@ def geometry_features_from_image(arr: np.ndarray) -> dict:
     lap = np.abs(np.fft.ifft2((np.fft.fft2(arr) * (-4 * (np.sin(np.pi * xx/N)**2 + np.sin(np.pi * yy/N)**2)))))
     roughness = float(np.var(np.abs(lap)))
 
-    # band energies (coarse)
     low_band = float(np.mean(np.abs(np.fft.fftshift(np.fft.fft2(arr))[0: N//8, :])))
     mid_band = float(np.mean(np.abs(np.fft.fftshift(np.fft.fft2(arr))[N//8: N//3, :])))
     high_band = float(np.mean(np.abs(np.fft.fftshift(np.fft.fft2(arr))[N//3:, :])))
@@ -117,16 +143,16 @@ def geometry_features_from_image(arr: np.ndarray) -> dict:
         "low_band": low_band,
         "mid_band": mid_band,
         "high_band": high_band,
-        "mag": mag  # keep for visualization
+        "mag": mag.tolist()
     }
 
-def geometry_code(features: dict) -> str:
+def geometry_code(features):
     return f"G{features['lobe_count']}-V{features['v_score']:.2f}-H{features['h_score']:.2f}-R{features['rot_harmonics']}"
 
-# ----------------------------
+# --------------------
 # Cosmic detector
-# ----------------------------
-def detect_circles_and_rings(arr: np.ndarray, threshold_ratio=0.25) -> dict:
+# --------------------
+def detect_circles_and_rings(arr, threshold_ratio=0.25):
     N = arr.shape[0]
     cy, cx = N//2, N//2
     yy, xx = np.indices(arr.shape)
@@ -151,10 +177,10 @@ def detect_circles_and_rings(arr: np.ndarray, threshold_ratio=0.25) -> dict:
     circularity_score = 1.0 - (radial_var / (radial_var + 1.0))
     return {"radial_profile": radial.tolist(), "rings": peaks, "circularity_score": circularity_score}
 
-# ----------------------------
-# Symbol DNA extractor (256)
-# ----------------------------
-def symbol_dna(arr: np.ndarray, num_angles=128, num_radii=64) -> np.ndarray:
+# --------------------
+# Symbol DNA
+# --------------------
+def symbol_dna(arr, num_angles=128, num_radii=64):
     N = arr.shape[0]
     cy, cx = N//2, N//2
     thetas = np.linspace(0, 2*np.pi, num_angles, endpoint=False)
@@ -170,55 +196,128 @@ def symbol_dna(arr: np.ndarray, num_angles=128, num_radii=64) -> np.ndarray:
     out = (out - out.min()) / (out.max() - out.min() + 1e-12)
     return out
 
-# ----------------------------
-# Audio synth
-# ----------------------------
-def synth_tone(freq: float, duration: float=1.5, sr:int=22050, harmonics=None, amps=None):
-    t = np.linspace(0, duration, int(sr*duration), endpoint=False)
-    signal = np.zeros_like(t)
-    if harmonics is None:
-        harmonics = [1.0]
-    if amps is None:
-        amps = [1.0]*len(harmonics)
-    for h, a in zip(harmonics, amps):
-        signal += a * np.sin(2*np.pi*freq*h*t)
-    sig = signal / (np.max(np.abs(signal)) + 1e-12)
-    samples = np.int16(sig * 32767)
-    import wave, struct
-    buf = io.BytesIO()
-    with wave.open(buf, 'wb') as wf:
-        wf.setnchannels(1)
-        wf.setsampwidth(2)
-        wf.setframerate(sr)
-        wf.writeframes(struct.pack('<' + ('h'*len(samples)), *samples))
-    buf.seek(0)
-    return buf.read()
+# --------------------
+# Simple k-NN (NumPy) classifier using features
+# --------------------
+def build_knn(mappings):
+    X = []
+    y = []
+    for k,v in mappings.items():
+        f = v["features"]
+        vec = np.array([min(f["lobe_count"],8)/8.0, f["v_score"], f["h_score"], min(f["rot_harmonics"],8)/8.0, f["centroid_shift"]])
+        X.append(vec); y.append(v["saved_label"])
+    if len(X)==0:
+        return np.zeros((0,5)), []
+    return np.vstack(X), y
 
-# ----------------------------
-# Ritual optical + acoustic simulators
-# ----------------------------
-def ritual_optical_simulator(arr_list, weights, phase_offsets, alpha=2*np.pi):
-    fields = []
-    for arr in arr_list:
-        field = np.exp(1j * alpha * arr)
-        fields.append(field)
-    combined = np.zeros_like(fields[0], dtype=np.complex128)
-    for fld, w, ph in zip(fields, weights, phase_offsets):
-        combined += w * fld * np.exp(1j * ph)
-    intensity = np.abs(np.fft.fftshift(np.fft.fft2(combined)))
-    return safe_image(np.log(1 + intensity.real))
+def knn_predict_one(x, X_train, y_train, k=3):
+    if X_train.shape[0] == 0:
+        return None, 0.0
+    dists = np.linalg.norm(X_train - x.reshape(1,-1), axis=1)
+    idx = np.argsort(dists)[:k]
+    labels = [y_train[i] for i in idx]
+    from collections import Counter
+    cnt = Counter(labels)
+    label, count = cnt.most_common(1)[0]
+    conf = count / float(k)
+    return label, conf
 
-def ritual_acoustic_simulator(spectra, freqs, amplitudes, phase_offsets):
-    combined = np.zeros_like(spectra[0], dtype=np.complex128)
-    for spec, amp, ph in zip(spectra, amplitudes, phase_offsets):
-        combined += amp * spec * np.exp(1j * ph)
-    return freqs, np.abs(combined)
+# --------------------
+# Rule engine helpers
+# --------------------
+def rule_matches(features, rule):
+    c = rule.get("conditions", {})
+    detail = {}
+    if "v_score_min" in c and features["v_score"] < c["v_score_min"]:
+        detail["v_score"]=(features["v_score"], c["v_score_min"]); return False, detail
+    if "v_score_max" in c and features["v_score"] > c["v_score_max"]:
+        detail["v_score"]=(features["v_score"], c["v_score_max"]); return False, detail
+    if "h_score_min" in c and features["h_score"] < c["h_score_min"]:
+        detail["h_score"]=(features["h_score"], c["h_score_min"]); return False, detail
+    if "h_score_max" in c and features["h_score"] > c["h_score_max"]:
+        detail["h_score"]=(features["h_score"], c["h_score_max"]); return False, detail
+    if "lobe_min" in c and features["lobe_count"] < c["lobe_min"]:
+        detail["lobe_count"]=(features["lobe_count"], c["lobe_min"]); return False, detail
+    if "lobe_max" in c and features["lobe_count"] > c["lobe_max"]:
+        detail["lobe_count"]=(features["lobe_count"], c["lobe_max"]); return False, detail
+    if "rot_harmonics_min" in c and features["rot_harmonics"] < c["rot_harmonics_min"]:
+        detail["rot_harmonics"]=(features["rot_harmonics"], c["rot_harmonics_min"]); return False, detail
+    if "centroid_shift_min" in c and features["centroid_shift"] < c["centroid_shift_min"]:
+        detail["centroid_shift"]=(features["centroid_shift"], c["centroid_shift_min"]); return False, detail
+    if "centroid_shift_max" in c and features["centroid_shift"] > c["centroid_shift_max"]:
+        detail["centroid_shift"]=(features["centroid_shift"], c["centroid_shift_max"]); return False, detail
+    return True, {}
 
-# ----------------------------
-# Sweep GIF helpers
-# ----------------------------
-from PIL import Image as PILImage
+# --------------------
+# Multi-layer reading pipeline (runs all layers & returns ranked hypotheses)
+# --------------------
+PROTOTYPES = {
+    "Container/Storage": np.array([1.0,0.8,0.2,0.5,0.02]),
+    "Flow/Movement": np.array([0.3,0.2,0.8,0.7,0.12]),
+    "Duality/Pairing": np.array([0.7,0.4,0.4,0.9,0.04]),
+    "Cosmic/Celestial": np.array([1.0,0.5,0.5,1.0,0.01]),
+    "Numeric/Count": np.array([0.05,0.95,0.95,0.05,0.005])
+}
 
+def fallback_predict(features):
+    fv = np.array([min(features["lobe_count"],8)/8.0, features["v_score"], features["h_score"], min(features["rot_harmonics"],8)/8.0, features["centroid_shift"]])
+    dists = {}
+    for label, proto in PROTOTYPES.items():
+        d = np.linalg.norm(fv - proto)
+        dists[label] = float(d)
+    maxd = max(dists.values()) if dists else 1.0
+    sims = {k: 1 - (v/(maxd+1e-12)) for k,v in dists.items()}
+    return sorted(sims.items(), key=lambda x:-x[1])
+
+def multilayer_read(arr, name, pipeline_mode="hybrid"):
+    """pipeline_mode: 'preload' (rules only), 'learn' (knn only), 'hybrid' (combine)"""
+    feats = geometry_features_from_image(arr)
+    dna = symbol_dna(arr)
+    cosmic = detect_circles_and_rings(arr)
+    results = []
+    # 1) Rule-based
+    rule_hits = []
+    for r in st.session_state.rule_base:
+        ok, detail = rule_matches(feats, r)
+        if ok:
+            rule_hits.append({"label": r["label"], "confidence": r["confidence"], "explanation": r["explanation"], "rule_id": r["id"]})
+    # 2) Fallback prototype
+    fallback = fallback_predict(feats)
+    # 3) k-NN (if mappings exist)
+    X_train, y_train = build_knn(st.session_state.user_mappings)
+    xq = np.array([min(feats["lobe_count"],8)/8.0, feats["v_score"], feats["h_score"], min(feats["rot_harmonics"],8)/8.0, feats["centroid_shift"]])
+    knn_label, knn_conf = knn_predict_one(xq, X_train, y_train, k=min(3, max(1, X_train.shape[0]))) if X_train.shape[0]>0 else (None, 0.0)
+    # 4) DNA similarity (cosine) to saved mappings
+    dna_scores = []
+    for k,v in st.session_state.user_mappings.items():
+        if "dna" in v:
+            proto = np.array(v["dna"])
+            score = np.dot(proto, dna) / (np.linalg.norm(proto)+1e-12) / (np.linalg.norm(dna)+1e-12)
+            dna_scores.append((v["saved_label"], float(score)))
+    dna_scores_sorted = sorted(dna_scores, key=lambda x:-x[1])
+    # Compose results according to pipeline_mode
+    combined = {}
+    # start with fallback prototypes (weight 0.3)
+    for label, sim in fallback:
+        combined[label] = combined.get(label, 0.0) + 0.3 * sim
+    # rules (weight 0.7)
+    if pipeline_mode in ("preload","hybrid"):
+        for rh in rule_hits:
+            combined[rh["label"]] = combined.get(rh["label"], 0.0) + 0.7 * rh["confidence"]
+    # knn (weight 0.6)
+    if pipeline_mode in ("learn","hybrid") and knn_label:
+        combined[knn_label] = combined.get(knn_label, 0.0) + 0.6 * knn_conf
+    # dna matches (weight 0.4)
+    for lab, sc in dna_scores_sorted[:3]:
+        combined[lab] = combined.get(lab, 0.0) + 0.4 * sc
+    # rank
+    ranked = sorted(combined.items(), key=lambda x:-x[1])
+    explanation = {"features": feats, "rule_hits": rule_hits, "fallback": fallback[:5], "knn": (knn_label, knn_conf), "dna_scores": dna_scores_sorted[:5], "cosmic": cosmic}
+    return ranked, explanation, dna
+
+# --------------------
+# Sweep generation helpers: optical & acoustic (reused later)
+# --------------------
 def build_optical_frame(arrs_for_sweep, weights, phase_offsets_rad, alpha=4*np.pi):
     fields = [np.exp(1j * alpha * a) for a in arrs_for_sweep]
     combined = np.zeros_like(fields[0], dtype=np.complex128)
@@ -236,7 +335,7 @@ def make_optical_sweep_gif(arrs_for_sweep, weights, start_phase_deg=0, stop_phas
     for t in range(frames):
         phase = math.radians(start_phase_deg + (stop_phase_deg - start_phase_deg) * (t / float(frames-1)))
         frame = build_optical_frame(arrs_for_sweep, weights, [phase]*len(arrs_for_sweep))
-        pil = PILImage.fromarray(frame).convert("L").resize((512,512))
+        pil = Image.fromarray(frame).convert("L").resize((512,512))
         frames_list.append(pil)
     buf = io.BytesIO()
     frames_list[0].save(buf, format='GIF', save_all=True, append_images=frames_list[1:], duration=int(1000*duration_s/frames), loop=0)
@@ -263,18 +362,34 @@ def make_acoustic_sweep_gif(dna_list_sel, freqlow, freqhigh, frames=24, duration
         ys = (env * 127).astype(np.uint8)
         for x, y in enumerate(ys):
             im[127-y:, x] = 255
-        pil = PILImage.fromarray(im).convert("L")
+        pil = Image.fromarray(im).convert("L")
         frames_list.append(pil)
     buf = io.BytesIO()
     frames_list[0].save(buf, format='GIF', save_all=True, append_images=frames_list[1:], duration=int(1000*duration_s/frames), loop=0)
     buf.seek(0)
     return buf.getvalue()
 
-# ----------------------------
-# Export features & DNA ZIP
-# ----------------------------
-import zipfile
-def export_features_and_dna_zip(names, features_list, dna_list, zip_name="indus_export.zip"):
+# --------------------
+# Energy flow simulator: transform A->B via geometry convolution-style model
+# --------------------
+def energy_flow_transform(arrA, arrB, alpha=1.0):
+    # approximate transform: convolve A's FFT magnitude with B's geometry mask, then inverse
+    FA = np.fft.fft2(arrA)
+    FB = np.fft.fft2(arrB)
+    magA = np.abs(FA)
+    phA = np.angle(FA)
+    # create mask from B (sigmoid of its image)
+    maskB = 1.0 / (1.0 + np.exp(-10*(arrB - 0.5)))
+    # modulate magA by maskB's lowpass of its fft
+    low_B = np.abs(np.fft.ifft2(np.fft.fft2(maskB) * (np.exp(- (np.fft.fftfreq(arrB.shape[0])**2)[:,None]*10))))
+    transformed_mag = magA * (1.0 + alpha * low_B)
+    transformed = np.real(np.fft.ifft2(transformed_mag * np.exp(1j*phA)))
+    return safe_image(transformed)
+
+# --------------------
+# Export: features & DNA ZIP + HTML report
+# --------------------
+def export_features_and_dna_zip(names, features_list, dna_list):
     mem = io.BytesIO()
     with zipfile.ZipFile(mem, mode="w", compression=zipfile.ZIP_DEFLATED) as zf:
         if len(features_list) > 0:
@@ -297,9 +412,6 @@ def export_features_and_dna_zip(names, features_list, dna_list, zip_name="indus_
     mem.seek(0)
     return mem.getvalue()
 
-# ----------------------------
-# HTML Hypothesis report
-# ----------------------------
 def generate_html_report(names, features_list, dna_list, cosmic_list):
     parts = ["<html><head><meta charset='utf-8'><title>Indus Hypothesis Report</title></head><body>"]
     parts.append("<h1>Indus Symbol Hypothesis Report</h1>")
@@ -310,14 +422,12 @@ def generate_html_report(names, features_list, dna_list, cosmic_list):
             if k=="mag": continue
             parts.append(f"<li><b>{k}</b>: {json.dumps(v)}</li>")
         parts.append("</ul>")
-        # FFT image
         fig, ax = plt.subplots(figsize=(4,2))
         ax.imshow(np.array(feats["mag"]), cmap="magma")
         ax.axis("off")
         buf = io.BytesIO(); fig.savefig(buf, format="png", bbox_inches="tight"); plt.close(fig); buf.seek(0)
         b64 = base64.b64encode(buf.read()).decode('ascii')
         parts.append(f"<img src='data:image/png;base64,{b64}' style='max-width:700px;'>")
-        # DNA plot
         fig2, ax2 = plt.subplots(figsize=(6,1.2))
         ax2.plot(dna, linewidth=1)
         ax2.axis("off")
@@ -327,52 +437,81 @@ def generate_html_report(names, features_list, dna_list, cosmic_list):
     parts.append("</body></html>")
     return "\n".join(parts)
 
-# ----------------------------
-# Session log (in-memory; optional file save)
-# ----------------------------
-if "session_log" not in st.session_state:
-    st.session_state.session_log = []
+# --------------------
+# Main UI: pipeline control and execution
+# --------------------
+st.sidebar.header("Pipeline Mode")
+pipeline_mode = st.sidebar.radio("Choose pipeline mode", ["hybrid (recommended)", "preload (rules only)", "learn (k-NN only)"])
 
-def record_event(evt):
-    st.session_state.session_log.append(evt)
+# upload + improved multi-crop
+st.header("Upload images (multi-crop auto-detection enabled)")
+uploads = st.file_uploader("Upload images (JPG/PNG)", type=["jpg","jpeg","png"], accept_multiple_files=True)
 
-# ----------------------------
-# UI: Upload and pipeline
-# ----------------------------
-st.header("Upload symbols (JPG/PNG) — the pipeline will auto-crop and normalize")
-uploads = st.file_uploader("Upload images", accept_multiple_files=True, type=["jpg","jpeg","png"])
+# improved auto-cropper: detect connected components (simple threshold) and crop each as separate symbol
+def auto_multi_crop(img_bytes, threshold=250, min_area=50):
+    """Return list of bytes objects for each detected component (simple)"""
+    img = Image.open(io.BytesIO(img_bytes)).convert("L")
+    arr = np.array(img)
+    # binarize
+    mask = arr < threshold
+    # label connected components via simple flood fill
+    visited = np.zeros(mask.shape, dtype=bool)
+    comps = []
+    H, W = mask.shape
+    for y in range(H):
+        for x in range(W):
+            if mask[y,x] and not visited[y,x]:
+                # flood
+                stack = [(y,x)]
+                coords = []
+                while stack:
+                    yy, xx = stack.pop()
+                    if yy < 0 or yy>=H or xx<0 or xx>=W: continue
+                    if visited[yy,xx] or not mask[yy,xx]: continue
+                    visited[yy,xx] = True
+                    coords.append((yy,xx))
+                    stack.append((yy+1,xx)); stack.append((yy-1,xx)); stack.append((yy,xx+1)); stack.append((yy,xx-1))
+                if len(coords) >= min_area:
+                    ys = [c[0] for c in coords]; xs = [c[1] for c in coords]
+                    y0, y1 = max(min(ys)-2,0), min(max(ys)+2,H)
+                    x0, x1 = max(min(xs)-2,0), min(max(xs)+2,W)
+                    crop = img.crop((x0,y0,x1,y1))
+                    buf = io.BytesIO(); crop.save(buf, format='PNG'); buf.seek(0)
+                    comps.append(buf)
+    return comps
 
-# Optionally suggest using the workspace sheet if present (app will not require it)
-if os.path.exists(WORKSPACE_SHEET_PATH):
-    if st.checkbox("Use workspace sheet (auto-split into 3)"):
-        try:
-            sheet = Image.open(WORKSPACE_SHEET_PATH).convert("L")
-            w,h = sheet.size
-            for i in range(3):
-                left = int(i * w / 3); right = int((i+1) * w / 3)
-                crop = sheet.crop((left,0,right,h))
-                buf = io.BytesIO(); crop.save(buf, format='PNG'); buf.seek(0)
-                uploads.append(buf)
-            st.success("Auto-split sheet loaded into pipeline.")
-        except Exception as e:
-            st.warning(f"Could not load workspace sheet: {e}")
+# assemble processing list with optional auto-multi-crop
+processing = []
+if uploads:
+    auto_crop_checkbox = st.checkbox("Auto-detect multiple glyphs inside uploaded images and split into symbols", value=True)
+    for f in uploads:
+        raw = f.read()
+        if auto_crop_checkbox:
+            comps = auto_multi_crop(raw)
+            if comps:
+                processing.extend(comps)
+            else:
+                # fallback to original
+                processing.append(io.BytesIO(raw))
+        else:
+            processing.append(io.BytesIO(raw))
 
-if not uploads:
-    st.info("Upload one or more symbol images to continue.")
+if len(processing) == 0:
+    st.info("Upload at least one image to process.")
     st.stop()
 
-# Produce canonical lists:
+# preprocess all into canonical arrs, names
 arrs = []
 names = []
-for f in uploads:
+for i, buf in enumerate(processing):
     try:
-        arr = load_and_normalize(f, target_size=256)
+        arr = load_and_normalize(buf, target_size=256)
         arrs.append(arr)
-        names.append(getattr(f, "name", f"symbol_{len(names)+1}"))
+        names.append(getattr(buf, "name", f"symbol_{i+1}"))
     except Exception as e:
-        st.warning(f"Skipping one uploaded file due to error: {e}")
+        st.warning(f"Skipping one item (load error): {e}")
 
-# Feature extraction + dna + cosmic
+# compute features, dna, cosmic
 features_list = []
 dna_list = []
 cosmic_list = []
@@ -385,160 +524,205 @@ for arr in arrs:
     cosmic_list.append(cosmic)
     record_event({"type":"analyze","features":feats})
 
-# Display thumbnails and basic inferences
-st.header("Preprocessed symbols and quick inferences")
+# display thumbnails
+st.header("Preprocessed symbols")
 cols = st.columns(len(arrs))
-for c, arr, nm, feats, dna, cosmic in zip(cols, arrs, names, features_list, dna_list, cosmic_list):
-    c.image(safe_image(arr), caption=nm, use_column_width=True)
-    c.write(geometry_code(feats))
-    # small inference
-    tags = []
-    if feats["low_band"] > feats["mid_band"] and feats["low_band"] > feats["high_band"]:
-        tags.append("Material/Trade")
-    if feats["mid_band"] > feats["low_band"] and feats["mid_band"] > feats["high_band"]:
-        tags.append("Civic/Craft")
-    if feats["high_band"] > feats["low_band"] and feats["high_band"] > feats["mid_band"]:
-        tags.append("Ritual/Abstract")
-    if feats["v_score"] > 0.7:
-        tags.append("Authority")
-    if feats["h_score"] > 0.7:
-        tags.append("Cooperation")
-    if cosmic["circularity_score"] > 0.6:
-        tags.append("Cosmic")
-    c.write("Tags: " + ", ".join(tags))
+for c, a, n in zip(cols, arrs, names):
+    c.image(safe_image(a), caption=n, use_column_width=True)
 
-# ----------------------------
-# Meaning inference & inspector
-# ----------------------------
-st.header("Meaning Inference — Inspect & Save mappings")
-for i, (nm, feats, dna, cosmic) in enumerate(zip(names, features_list, dna_list, cosmic_list)):
-    st.markdown(f"### {i+1}. {nm}")
-    st.write("Features:", {k:v for k,v in feats.items() if k!="mag"})
-    st.write("Cosmic:", {"circularity_score": cosmic["circularity_score"], "rings": len(cosmic["rings"])})
-    st.line_chart(dna)
-    # Suggest labels
-    fallback = []
-    if feats["low_band"] > feats["mid_band"] and feats["low_band"] > feats["high_band"]:
-        fallback.append("Material / Trade")
-    if feats["mid_band"] > feats["low_band"] and feats["mid_band"] > feats["high_band"]:
-        fallback.append("Civic / Craft")
-    if feats["high_band"] > feats["low_band"] and feats["high_band"] > feats["mid_band"]:
-        fallback.append("Ritual / Abstract")
-    st.write("Suggested:", ", ".join(fallback) if fallback else "—")
-    label = st.text_input(f"Manual label for {nm}", key=f"label_{i}")
-    if st.button(f"Save mapping {nm}", key=f"save_{i}"):
-        st.session_state.session_log.append({"type":"mapping","name":nm,"label":label,"features":feats})
-        st.success(f"Saved mapping {nm} -> {label}")
-
-# ----------------------------
-# Composite / Sequence / Ritual simulator
-# ----------------------------
-st.header("Composite, Sequence & Ritual simulators")
-
-if len(arrs) >= 2:
-    st.subheader("Harmonic Composite (optical sum)")
-    w1 = st.slider("Weight A", 0.0, 3.0, 1.0)
-    w2 = st.slider("Weight B", 0.0, 3.0, 1.0)
-    phase_px = st.slider("Phase shift (px)", 0, 128, 0)
-    composite = safe_image(w1 * arrs[0] + w2 * np.roll(arrs[1], int(phase_px), axis=1))
-    st.image(composite, caption="Composite", use_column_width=True)
-
-if len(arrs) >= 3:
-    st.subheader("Sequence Engine")
-    phase_per = st.slider("Phase per symbol (px)", 0, 32, 2)
-    out = np.zeros_like(arrs[0])
-    for i, a in enumerate(arrs):
-        out += np.roll(a, int(i*phase_per), axis=0)
-    st.image(safe_image(out), caption="Sequence output", use_column_width=True)
-
-st.subheader("Ritual Activation (optical & acoustic)")
-picks = st.multiselect("Pick indices to include", options=list(range(len(arrs))), default=list(range(min(3,len(arrs)))))
-if len(picks) > 0:
-    weights = [st.slider(f"W for {names[i]}", 0.0, 3.0, 1.0, key=f"w{ i }") for i in picks]
-    phases_deg = [st.slider(f"Phase° for {names[i]}", 0, 360, (i*90)%360, key=f"ph{ i }") for i in picks]
-    phases_rad = [math.radians(p) for p in phases_deg]
-    opt = ritual_optical_simulator([arrs[i] for i in picks], weights, phases_rad, alpha=4*np.pi)
-    st.image(opt, caption="Ritual optical interference (FFT intensity)", use_column_width=True)
-    # acoustic combine
-    freqs = np.linspace(1,1000,1000)
-    spectra = []
-    for i in picks:
-        base = 100 + features_list[i]["lobe_count"]*30 + int(features_list[i]["centroid_shift"]*100)
-        spec = np.zeros_like(freqs)
-        for mult in [1,2,3]:
-            peak = base * mult
-            spec += np.exp(-0.5*((freqs - peak)/(peak*0.05+1e-6))**2)
-        spectra.append(spec)
-    freqs_out, combined_spec = ritual_acoustic_simulator(spectra, freqs, [1.0]*len(spectra), phases_rad)
-    fig, ax = plt.subplots(figsize=(6,2))
-    ax.plot(freqs_out, combined_spec)
-    ax.set_xlim(0, 600)
-    ax.set_xlabel("Hz")
-    st.pyplot(fig)
-    peak_idx = np.argmax(combined_spec); peak_freq = freqs_out[peak_idx]
-    st.write("Dominant combined peak:", int(peak_freq), "Hz")
-    if st.button("Play dominant combined tone"):
-        st.audio(synth_tone(float(peak_freq), duration=2.0, harmonics=[1,2,3], amps=[1.0,0.4,0.15]), format="audio/wav")
-
-# ----------------------------
-# Audio from DNA
-# ----------------------------
-st.header("Audio: play DNA-derived tone")
-idx_choice = st.selectbox("Pick symbol", options=list(range(len(arrs))), format_func=lambda i: names[i])
-if idx_choice is not None:
-    dna = dna_list[idx_choice]
-    centroid = np.sum(np.arange(len(dna)) * dna) / (dna.sum() + 1e-12)
-    base_freq = 40 + centroid * 760
-    n_harm = st.slider("harmonics", 1, 8, 4)
-    harm_mults = [i+1 for i in range(n_harm)]
-    harm_amps = [1.0/(i+1) for i in range(n_harm)]
-    st.write(f"Suggested base freq: {int(base_freq)} Hz")
-    if st.button("Play DNA tone"):
-        st.audio(synth_tone(float(base_freq), duration=2.0, harmonics=harm_mults, amps=harm_amps), format="audio/wav")
-
-# ----------------------------
-# Sweep gifs & exports
-# ----------------------------
-st.header("Sweep & Export")
-
-# optical sweep
-if len(arrs) >= 1:
-    st.subheader("Optical sweep GIF")
-    start_deg = st.number_input("start deg", 0, 360, 0)
-    end_deg = st.number_input("end deg", 0, 360, 360)
-    frames = st.slider("frames", 8, 48, 24)
-    duration = st.slider("gif duration (s)", 1.0, 6.0, 2.0)
-    pick_indices = st.multiselect("pick indices for sweep", options=list(range(len(arrs))), default=list(range(min(2,len(arrs)))))
-    if st.button("Generate optical sweep GIF"):
-        arrs_sel = [arrs[i] for i in pick_indices]
-        weights = [1.0]*len(arrs_sel)
-        gif = make_optical_sweep_gif(arrs_sel, weights, start_deg, end_deg, frames=frames, duration_s=duration)
-        st.image(gif)
-        st.download_button("Download optical sweep GIF", gif, file_name="optical_sweep.gif", mime="image/gif")
-
-# acoustic sweep
-if st.button("Generate acoustic sweep GIF (40→400 Hz)"):
-    if len(dna_list) == 0:
-        st.info("No DNA available.")
+# multilayer read for each symbol
+st.header("Multi-layer reads (ranked hypotheses)")
+for i, (arr, nm) in enumerate(zip(arrs, names)):
+    ranked, explanation, dna = multilayer_read(arr, nm, pipeline_mode=("preload" if pipeline_mode=="preload (rules only)" else ("learn" if pipeline_mode=="learn (k-NN only)" else "hybrid")))
+    st.subheader(f"{i+1}. {nm}")
+    if ranked:
+        for lab, score in ranked[:6]:
+            st.write(f"- {lab}  — score {score:.2f}")
     else:
-        gif = make_acoustic_sweep_gif(dna_list[:min(4,len(dna_list))], freqlow=40, freqhigh=400, frames=30, duration_s=3.0)
-        st.image(gif)
-        st.download_button("Download acoustic sweep GIF", gif, file_name="acoustic_sweep.gif", mime="image/gif")
+        st.write("_No hypotheses generated._")
+    st.write("Explanation (features + top rule hits):")
+    st.json(explanation)
 
-# Export features + DNA zip
-if st.button("Export features & DNA as ZIP"):
+    # human-in-loop: save mapping option
+    label = st.text_input(f"Set mapping for {nm} (optional)", key=f"map_{i}")
+    if st.button(f"Save mapping {nm}", key=f"save_map_{i}"):
+        if label.strip():
+            st.session_state.user_mappings[nm] = {"saved_label": label.strip(), "features": explanation["features"], "dna": dna.tolist()}
+            save_json(MAPPINGS_FILE, st.session_state.user_mappings)
+            st.success(f"Saved mapping {nm} -> {label.strip()}")
+            record_event({"type":"mapping","symbol":nm,"label":label.strip()})
+        else:
+            st.info("Enter a non-empty label")
+
+# Multi-symbol Harmonic Sequencer (item 1)
+st.header("Multi-Symbol Harmonic Sequencer")
+st.write("Select symbols and harmonic parameters; produce composite waveform + FFT + meaning summary")
+sel_idxs = st.multiselect("Select indices to sequence", options=list(range(len(arrs))), default=list(range(min(3,len(arrs)))))
+if len(sel_idxs) > 0:
+    freq_map = {}
+    for idx in sel_idxs:
+        base_guess = 80 + features_list[idx]["lobe_count"]*30 + int(features_list[idx]["centroid_shift"]*200)
+        freq_map[idx] = st.number_input(f"Base freq for {names[idx]}", min_value=20, max_value=2000, value=int(base_guess), key=f"bf_{idx}")
+    harmonic_mult = st.slider("Harmonic multiplier max", 1, 8, 3)
+    phase_offsets_deg = [st.slider(f"Phase° for {names[idx]}", 0, 360, 0, key=f"phseq_{idx}") for idx in sel_idxs]
+    weights = [st.slider(f"Weight for {names[idx]}", 0.0, 3.0, 1.0, key=f"wseq_{idx}") for idx in sel_idxs]
+    if st.button("Run harmonic sequence"):
+        # build composite acoustic spectrum by summing gaussian peaks
+        freqs = np.linspace(1,2000,2000)
+        combined_spec = np.zeros_like(freqs)
+        for idx, base in freq_map.items():
+            for mult in range(1, harmonic_mult+1):
+                peak = base * mult
+                amp = 1.0 / (mult)
+                combined_spec += weights[sel_idxs.index(idx)] * amp * np.exp(-0.5*((freqs - peak)/(peak*0.03+1e-6))**2)
+        fig, ax = plt.subplots(figsize=(6,2))
+        ax.plot(freqs, combined_spec)
+        ax.set_xlim(0,800); ax.set_xlabel("Hz")
+        st.pyplot(fig)
+        # optical composite (simple weighted sum + phase roll)
+        comp = np.zeros_like(arrs[0])
+        for idx, w, ph in zip(sel_idxs, weights, phase_offsets_deg):
+            comp += w * np.roll(arrs[idx], int(ph/360.0*arrs[idx].shape[1]), axis=1)
+        st.image(safe_image(comp), caption="Optical composite", use_column_width=True)
+        # meaning summary (run multilayer on composite)
+        ranked_comp, expl_comp, dna_comp = multilayer_read(safe_image(comp), "composite", pipeline_mode=("hybrid" if pipeline_mode=="hybrid (recommended)" else ("preload" if pipeline_mode=="preload (rules only)" else "learn")))
+        st.write("Composite hypotheses:")
+        for lab, sc in ranked_comp[:6]:
+            st.write(f"- {lab} — score {sc:.2f}")
+        record_event({"type":"sequence_run","indices":sel_idxs,"weights":weights,"phases":phase_offsets_deg})
+
+# AC/DC Frequency Sweep Engine (item 3)
+st.header("AC/DC Frequency Sweep Engine")
+sweep_mode = st.selectbox("Sweep mode", ["linear","log","chirp","burst"])
+sweep_start = st.number_input("Start frequency (Hz)", 1, 1, 20)
+sweep_stop = st.number_input("Stop frequency (Hz)", 1, 400, 400)
+sweep_frames = st.slider("Sweep frames (GIF)", 8, 60, 24)
+sweep_duration = st.slider("Sweep duration (s)", 1.0, 6.0, 2.0)
+if st.button("Generate sweep GIF (acoustic)"):
+    # build acoustic sweep by creating spec frames across frequencies
+    frames = []
+    freqs = np.linspace(1,2000,2000)
+    for t in range(sweep_frames):
+        if sweep_mode == "linear":
+            fbase = sweep_start + (sweep_stop - sweep_start) * (t/(sweep_frames-1))
+        elif sweep_mode == "log":
+            fbase = np.exp(np.log(sweep_start) + (np.log(sweep_stop)-np.log(sweep_start))*(t/(sweep_frames-1)))
+        elif sweep_mode == "chirp":
+            fbase = sweep_start + (sweep_stop - sweep_start)*(t/(sweep_frames-1))**2
+        else:  # burst
+            fbase = sweep_start if (t < sweep_frames/2) else sweep_stop
+        combined = np.zeros_like(freqs)
+        for dna in dna_list[:min(4,len(dna_list))]:
+            centroid = np.sum(np.arange(len(dna)) * dna) / (dna.sum()+1e-12)
+            base = fbase * (0.5 + centroid)
+            for mult in [1,2,3]:
+                peak = base*mult
+                combined += np.exp(-0.5*((freqs - peak)/(peak*0.03+1e-6))**2)
+        im = np.zeros((128,512), dtype=np.uint8)
+        env = combined[:800]; env = env - env.min()
+        if env.max()>0:
+            env = env / env.max()
+        ys = (env * 127).astype(np.uint8)
+        for x, y in enumerate(ys):
+            im[127-y:, x] = 255
+        frames.append(Image.fromarray(im).convert("L"))
+    buf = io.BytesIO()
+    frames[0].save(buf, format='GIF', save_all=True, append_images=frames[1:], duration=int(1000*sweep_duration/sweep_frames), loop=0)
+    buf.seek(0)
+    st.image(buf.getvalue())
+    st.download_button("Download sweep GIF", buf.getvalue(), file_name="acoustic_sweep.gif", mime="image/gif")
+    record_event({"type":"sweep","mode":sweep_mode,"start":sweep_start,"stop":sweep_stop})
+
+# Symbol-to-Symbol Energy Flow Simulator (item 4)
+st.header("Symbol-to-Symbol Energy Flow Simulator")
+from_idx = st.selectbox("From symbol index", options=list(range(len(arrs))), format_func=lambda i: names[i])
+to_idx = st.selectbox("To symbol index", options=list(range(len(arrs))), format_func=lambda i: names[i])
+alpha_flow = st.slider("Transform strength (alpha)", 0.0, 3.0, 1.0)
+if st.button("Simulate energy flow A→B"):
+    trans = energy_flow_transform(arrs[from_idx], arrs[to_idx], alpha=alpha_flow)
+    st.image(trans, caption=f"Transformed output (A→B)", use_column_width=True)
+    # show comparison
+    colA, colB, colC = st.columns(3)
+    colA.image(safe_image(arrs[from_idx]), caption=f"A: {names[from_idx]}")
+    colB.image(safe_image(arrs[to_idx]), caption=f"B: {names[to_idx]}")
+    colC.image(trans, caption="A→B transformed")
+    record_event({"type":"energy_flow","from":names[from_idx],"to":names[to_idx],"alpha":alpha_flow})
+
+# Auto-crop & Multi-crop improved already implemented above (item 5)
+
+# Enhanced Hypothesis report (item 6)
+st.header("Export / Report")
+if st.button("Export Features & DNA ZIP"):
     zipb = export_features_and_dna_zip(names, features_list, dna_list)
     st.download_button("Download export ZIP", zipb, file_name="indus_export.zip", mime="application/zip")
+if st.button("Generate HTML Hypothesis Report"):
+    rep = generate_html_report(names, features_list, dna_list, cosmic_list)
+    st.download_button("Download HTML report", rep.encode('utf-8'), file_name="indus_hypothesis_report.html", mime="text/html")
+    st.success("Download ready — open HTML and Save As PDF for a PDF copy.")
 
-# HTML report
-if st.button("Generate HTML hypothesis report"):
-    html_report = generate_html_report(names, features_list, dna_list, cosmic_list)
-    st.download_button("Download HTML report", html_report.encode('utf-8'), file_name="indus_report.html", mime="text/html")
+# Real-time oscilloscope & spectrogram (frame-based) (item 7)
+st.header("Oscilloscope & Spectrogram (frame snapshots)")
+# For display we synth a waveform from selected symbol DNA-derived frequency and show waveform + spectrogram
+osc_idx = st.selectbox("Pick symbol for osc/spectrogram", options=list(range(len(arrs))), format_func=lambda i: names[i])
+if st.button("Generate osc & spectrogram snapshot"):
+    dna = dna_list[osc_idx]
+    centroid = np.sum(np.arange(len(dna)) * dna) / (dna.sum()+1e-12)
+    base_freq = 40 + centroid * 760
+    sr = 22050; dur = 1.0
+    t = np.linspace(0, dur, int(sr*dur), endpoint=False)
+    sig = np.zeros_like(t)
+    for mult in [1,2,3,4][:4]:
+        sig += (1.0/mult) * np.sin(2*np.pi*base_freq*mult*t)
+    fig, axs = plt.subplots(2,1, figsize=(8,4))
+    axs[0].plot(t[:1000], sig[:1000]); axs[0].set_title("Oscilloscope (time domain)")
+    axs[1].specgram(sig, NFFT=1024, Fs=sr, noverlap=512); axs[1].set_title("Spectrogram")
+    st.pyplot(fig)
+    record_event({"type":"osc_snapshot","symbol":names[osc_idx],"base_freq":base_freq})
 
-# Session log
-st.header("Session log (recent)")
+# Indus Grammar Engine (Experimental) (item 8)
+st.header("Indus Grammar Engine (experimental)")
+seq_input = st.text_input("Enter a sequence of indices (comma-separated) e.g. 0,1,2", value=",".join(str(i) for i in range(min(3,len(arrs)))))
+if st.button("Analyze sequence grammar"):
+    try:
+        seq = [int(x.strip()) for x in seq_input.split(",") if x.strip()!='']
+        # heuristics: operators tend to have high rot_harmonics, carriers high v_score, modifiers have centroid shifts
+        roles = []
+        for idx in seq:
+            f = features_list[idx]
+            role = "unknown"
+            if f["rot_harmonics"] >= 4:
+                role = "operator"
+            elif f["v_score"] > 0.7:
+                role = "carrier"
+            elif f["centroid_shift"] > 0.12:
+                role = "modifier"
+            elif f["lobe_count"] <= 1:
+                role = "numeral"
+            roles.append((names[idx], role, f))
+        st.write("Sequence roles (heuristic):")
+        for r in roles:
+            st.write(f"- {r[0]} → {r[1]}")
+        # attempt simple syntactic reduction: operator + carrier -> compounded meaning
+        st.write("Syntactic summary (heuristic):")
+        if len(roles) >= 2:
+            st.write(f"Primary: {roles[0][1]} | Secondary: {roles[1][1]}")
+        record_event({"type":"grammar_analysis","seq":seq,"roles":[r[1] for r in roles]})
+    except Exception as e:
+        st.error(f"Parse error: {e}")
+
+# Session log & persistence
+st.header("Session log & persistence")
+st.write("Recent events (last 20):")
 st.write(st.session_state.session_log[-20:])
-if st.button("Download session log"):
-    st.download_button("Download JSON log", json.dumps(st.session_state.session_log, indent=2).encode('utf-8'), file_name="session_log.json", mime="application/json")
+if st.button("Save session log to disk"):
+    save_json(SESSION_FILE, st.session_state.session_log)
+    st.success(f"Saved session log to {SESSION_FILE}")
+if st.button("Clear session log"):
+    st.session_state.session_log = []; save_json(SESSION_FILE, st.session_state.session_log); st.success("Cleared session log")
 
-st.success("App ready. Upload symbols and experiment — everything runs on the phone and saves locally where possible.")
+# Save mappings
+if st.button("Save user mappings to disk"):
+    save_json(MAPPINGS_FILE, st.session_state.user_mappings)
+    st.success(f"Saved mappings to {MAPPINGS_FILE}")
+
+st.success("All systems loaded. Use the UI above to run experiments — hybrid pipeline (preload rules + learn) is recommended.")
