@@ -57,47 +57,6 @@ def auto_multi_crop(pil_image, threshold=200, min_area=40):
     return crops
 
 
-# -------------------------------
-# STREAMLIT UI
-# -------------------------------
-st.title("Indus Symbol Loader + Auto Crop (Uploads Only)")
-
-uploaded_files = st.file_uploader(
-    "Upload one or more symbol sheets (JPG or PNG)",
-    type=["png", "jpg", "jpeg"],
-    accept_multiple_files=True
-)
-
-if uploaded_files:
-    st.header("Detected Symbols")
-    
-    all_crops = []
-    
-    for file in uploaded_files:
-        st.subheader(f"Processing: {file.name}")
-
-        raw = file.read()
-        pil = Image.open(io.BytesIO(raw))
-
-        # auto crop symbols
-        crops = auto_multi_crop(pil, threshold=200, min_area=40)
-
-        if len(crops) == 0:
-            st.warning("No symbols detected — consider lowering threshold or min_area.")
-        else:
-            st.success(f"Detected {len(crops)} symbols")
-            all_crops.extend(crops)
-
-            # show thumbnails
-            cols = st.columns(4)
-            for i, c in enumerate(crops):
-                cols[i % 4].image(c, caption=f"Crop {i+1}", use_column_width=True)
-
-    if all_crops:
-        st.info("Symbols extracted — ready for DNA, FFT, inference, or sequencing.")
-st.set_page_config(page_title="Indus Resonance Lab • Unified", layout="wide")
-st.title("Indus Symbol Resonance Lab — Unified (Multi-layer + Auto-learn)")
-
 # -----------------------------
 # Persistence / defaults
 # -----------------------------
