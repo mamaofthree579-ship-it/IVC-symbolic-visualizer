@@ -1,26 +1,100 @@
-# app.py
-# Indus Resonance Lab — Unified All-in-One
-# - Multi-layer decoding (visible)
-# - Auto-learning (on upload/save)
-# - Auto-crop & multi-crop
-# - DNA fingerprinting (256)
-# - Cosmic detector, FFT, geometry features
-# - Harmonic sequencer, ritual simulator, energy flow
-# - Sweep engines, GIF generation
-# - Exports (ZIP, HTML)
-# - Oscilloscope & spectrogram snapshots
-# - Session persistence
-#
-# Optional workspace sheet path (developer-provided local file)
-WORKSPACE_SHEET_PATH = "/mnt/data/A_digital_vector_image_displays_three_black_Indus_.png"
-
 import streamlit as st
 import numpy as np
 from PIL import Image
-import io, os, json, csv, math, base64
-import matplotlib.pyplot as plt
-import zipfile, tempfile, time
+import io
 
+# -------------------------------
+# AUTO CROP FUNCTION
+# -------------------------------
+def auto_multi_crop(pil_image, threshold=200, min_area=40):
+    """
+    Takes a PIL image (uploaded by user),
+    finds dark connected components,
+    and returns list of PIL crops.
+    """
+    pil = pil_image.convert("L")
+    arr = np.array(pil)
+    H, W = arr.shape
+
+    mask = arr < threshold
+    visited = np.zeros_like(mask, dtype=bool)
+
+    crops = []
+
+    for y in range(H):
+        for x in range(W):
+            if mask[y, x] and not visited[y, x]:
+
+                stack = [(y, x)]
+                coords = []
+
+                while stack:
+                    yy, xx = stack.pop()
+
+                    if yy < 0 or yy >= H or xx < 0 or xx >= W:
+                        continue
+                    if visited[yy, xx] or not mask[yy, xx]:
+                        continue
+
+                    visited[yy, xx] = True
+                    coords.append((yy, xx))
+
+                    stack.append((yy + 1, xx))
+                    stack.append((yy - 1, xx))
+                    stack.append((yy, xx + 1))
+                    stack.append((yy, xx - 1))
+
+                # Only keep sufficiently large symbol shapes
+                if len(coords) >= min_area:
+                    ys = [c[0] for c in coords]
+                    xs = [c[1] for c in coords]
+                    y0, y1 = max(min(ys) - 2, 0), min(max(ys) + 2, H)
+                    x0, x1 = max(min(xs) - 2, 0), min(max(xs) + 2, W)
+
+                    crop = pil.crop((x0, y0, x1, y1))
+                    crops.append(crop)
+
+    return crops
+
+
+# -------------------------------
+# STREAMLIT UI
+# -------------------------------
+st.title("Indus Symbol Loader + Auto Crop (Uploads Only)")
+
+uploaded_files = st.file_uploader(
+    "Upload one or more symbol sheets (JPG or PNG)",
+    type=["png", "jpg", "jpeg"],
+    accept_multiple_files=True
+)
+
+if uploaded_files:
+    st.header("Detected Symbols")
+    
+    all_crops = []
+    
+    for file in uploaded_files:
+        st.subheader(f"Processing: {file.name}")
+
+        raw = file.read()
+        pil = Image.open(io.BytesIO(raw))
+
+        # auto crop symbols
+        crops = auto_multi_crop(pil, threshold=200, min_area=40)
+
+        if len(crops) == 0:
+            st.warning("No symbols detected — consider lowering threshold or min_area.")
+        else:
+            st.success(f"Detected {len(crops)} symbols")
+            all_crops.extend(crops)
+
+            # show thumbnails
+            cols = st.columns(4)
+            for i, c in enumerate(crops):
+                cols[i % 4].image(c, caption=f"Crop {i+1}", use_column_width=True)
+
+    if all_crops:
+        st.info("Symbols extracted — ready for DNA, FFT, inference, or sequencing.")
 st.set_page_config(page_title="Indus Resonance Lab • Unified", layout="wide")
 st.title("Indus Symbol Resonance Lab — Unified (Multi-layer + Auto-learn)")
 
