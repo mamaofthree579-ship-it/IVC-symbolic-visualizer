@@ -579,7 +579,7 @@ if len(sel_idxs) > 0:
 # AC/DC sweep engine
 st.header("AC/DC Frequency Sweep Engine (acoustic GIF)")
 sweep_mode = st.selectbox("Sweep mode", ["linear","log","chirp","burst"])
-sweep_from = st.number_input("Start Hz", 1, 1, 30)
+sweep_from = st.number_input("Start Hz", 1, 2000, 400)
 sweep_to = st.number_input("Stop Hz", 1, 2000, 400)
 sweep_frames = st.slider("Frames", 8, 60, 24)
 sweep_duration = st.slider("GIF duration (s)", 1.0, 6.0, 2.0)
